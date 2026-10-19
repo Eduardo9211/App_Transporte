@@ -36,6 +36,10 @@
 
         .chart-container { position: relative; height: 250px; width: 100%; margin-top: 15px; }
 
+        /* Resumen de cotizador */
+        .resumen-iave { background: #eef2f7; border-left: 5px solid #1e3c72; padding: 12px; border-radius: 4px; margin-top: 15px; }
+        .resumen-iave h4 { margin: 0 0 5px 0; color: #1e3c72; }
+
         /* Estilo para el PDF Ejecutivo del Jefe */
         #reporte-pdf-area { background: white; padding: 20px; display: none; }
     </style>
@@ -46,15 +50,15 @@
 
     <div class="tabs">
         <button class="tab-btn active" onclick="cambiarPestaña(event, 'tab-combustible')">⛽ Combustible</button>
-        <button class="tab-btn" onclick="cambiarPestaña(event, 'tab-iave')">💳 Casetas IAVE</button>
+        <button class="tab-btn" onclick="cambiarPestaña(event, 'tab-iave')">💳 Casetas e IAVE</button>
         <button class="tab-btn" onclick="cambiarPestaña(event, 'tab-comparativa')">📈 Gráficas y Análisis</button>
         <button class="tab-btn" onclick="cambiarPestaña(event, 'tab-historial')">📊 Generar PDF</button>
     </div>
 
-    <!-- PESTAÑA 1: COMBUSTIBLE -->
+    <!-- PESTAÑA 1: COMBUSTIBLE Y TIEMPOS -->
     <div id="tab-combustible" class="tab-content active">
         <div class="card">
-            <h2>Control de Combustible (Doble Tanque)</h2>
+            <h2>Control de Combustible y Tiempos de Viaje</h2>
             <form id="fuelForm">
                 <div class="grid">
                     <div><label>Fecha</label><input type="date" id="f_fecha" onchange="calcularNumeroViajeAuto()"></div>
@@ -63,6 +67,13 @@
                     <div><label>Origen</label><input type="text" id="f_origen" placeholder="MEX - TLALNEPAN"></div>
                     <div><label>Destino</label><input type="text" id="f_destino" placeholder="MEX - LA FRAGUA"></div>
                     <div><label>Km Recorridos</label><input type="number" step="0.1" id="f_km"></div>
+                </div>
+
+                <h3>Tiempos de Salida y Llegada</h3>
+                <div class="grid">
+                    <div><label>Hora Salida</label><input type="datetime-local" id="f_salida" onchange="calcTiempoTraslado()"></div>
+                    <div><label>Hora Llegada</label><input type="datetime-local" id="f_llegada" onchange="calcTiempoTraslado()"></div>
+                    <div><label>Tiempo Total (Hrs)</label><input type="text" id="f_tiempototal" readonly style="background-color: #e9ecef; font-weight: bold; color: #d35400;"></div>
                 </div>
                 
                 <h3>Tanques y Recargas</h3>
@@ -86,10 +97,28 @@
         </div>
     </div>
 
-    <!-- PESTAÑA 2: CASETAS E IAVE -->
+    <!-- PESTAÑA 2: CASETAS E IAVE Y COTIZADOR PRÉ-RUTA -->
     <div id="tab-iave" class="tab-content">
+        <!-- COTIZADOR PRÉ-RUTA PARA EL JEFE -->
+        <div class="card" style="background: #eaf2f8; border: 1px solid #aed6f1;">
+            <h2>🔍 Consulta Pré-Ruta: Saldo TAG IAVE</h2>
+            <p style="font-size: 11px; color: #555; margin-top: -8px;">Suma automáticamente todas las casetas del trayecto basándose en el historial.</p>
+            <div class="grid">
+                <div><label>Buscar por Ruta / Destino</label><input type="text" id="cotiz_ruta" placeholder="Ej. QUERETARO"></div>
+                <div><label>Filtrar Operador (Opcional)</label><input type="text" id="cotiz_operador" placeholder="Ej. Alvaro"></div>
+            </div>
+            <button type="button" style="background: #27ae60;" onclick="consultarMontoIaveRuta()">💰 Calcular Saldo Necesario para el TAG</button>
+
+            <div id="resultado-cotizacion" class="resumen-iave" style="display: none;">
+                <h4>Resumen Estimado para Carga IAVE:</h4>
+                <p style="margin: 3px 0;"><strong>Ruta / Tramo:</strong> <span id="res_ruta">-</span></p>
+                <p style="margin: 3px 0;"><strong>Suma Total de Casetas (Trayecto):</strong> <span id="res_monto" style="font-size: 16px; color: #27ae60; font-weight: bold;">$0.00 MXN</span></p>
+                <p style="margin: 3px 0;"><strong>Total de Pasos Registrados:</strong> <span id="res_pasos">0</span> casetas sumadas</p>
+            </div>
+        </div>
+
         <div class="card">
-            <h2>Auditoría de Casetas e IAVE</h2>
+            <h2>Registro de Caseta Individual (Auditoría IAVE)</h2>
             <form id="iaveForm">
                 <div class="grid">
                     <div><label>Operador</label><input type="text" id="i_operador" placeholder="Alvaro"></div>
@@ -100,7 +129,7 @@
                     <div><label>Plaza de Cobro / Caseta</label><input type="text" id="i_caseta" placeholder="TEPOTZOTLAN"></div>
                     <div><label>Tarifa / Importe ($)</label><input type="number" step="0.1" id="i_importe"></div>
                 </div>
-                <button type="button" onclick="guardarRegistro('iave')">💾 Guardar Registro</button>
+                <button type="button" onclick="guardarRegistro('iave')">💾 Guardar Registro de Caseta</button>
             </form>
         </div>
     </div>
@@ -139,12 +168,13 @@
                 <table id="tabla-historial">
                     <thead>
                         <tr>
-                            <th>Fecha/Hora</th>
+                            <th>Fecha</th>
                             <th>Módulo</th>
                             <th>Operador</th>
                             <th>N° Viaje</th>
                             <th>Detalle / Ruta</th>
                             <th>Monto / Consumo</th>
+                            <th>Tiempo Traslado</th>
                         </tr>
                     </thead>
                     <tbody></tbody>
@@ -156,7 +186,7 @@
     <!-- PLANTILLA OCULTA DEL PDF PARA EL JEFE -->
     <div id="reporte-pdf-area">
         <h1 style="color: #1e3c72; font-size: 18px; text-align: center;">REPORTE EJECUTIVO DE CONTROL DE FLOTAS</h1>
-        <p style="font-size: 10px; text-align: center; color: #555;">Auditoría de Casetas, Tiempos y Consumo de Combustible</p>
+        <p style="font-size: 10px; text-align: center; color: #555;">Auditoría de Casetas, Tiempos de Traslado y Consumo de Combustible</p>
         <hr>
         <div id="contenido-pdf"></div>
     </div>
@@ -165,7 +195,6 @@
         let myChartPeajes = null;
         let myChartRend = null;
 
-        // Establecer fecha de hoy al iniciar la app
         window.addEventListener('DOMContentLoaded', () => {
             const hoy = new Date().toISOString().split('T')[0];
             document.getElementById('f_fecha').value = hoy;
@@ -183,6 +212,27 @@
             if(idTab === 'tab-comparativa') actualizarGraficas();
         }
 
+        // CÁLCULO DE TIEMPO DE TRASLADO EN HORAS
+        function calcTiempoTraslado() {
+            const salida = document.getElementById('f_salida').value;
+            const llegada = document.getElementById('f_llegada').value;
+
+            if (salida && llegada) {
+                const dateSalida = new Date(salida);
+                const dateLlegada = new Date(llegada);
+
+                const diffMs = dateLlegada - dateSalida;
+                if (diffMs > 0) {
+                    const diffHrs = (diffMs / (1000 * 60 * 60)).toFixed(1);
+                    document.getElementById('f_tiempototal').value = `${diffHrs} hrs`;
+                } else {
+                    document.getElementById('f_tiempototal').value = "Error en Horas";
+                }
+            } else {
+                document.getElementById('f_tiempototal').value = "";
+            }
+        }
+
         // LÓGICA AUTOMÁTICA DEL NÚMERO DE VIAJE
         function calcularNumeroViajeAuto() {
             const operadorInput = document.getElementById('f_operador').value.trim().toLowerCase();
@@ -193,38 +243,64 @@
                 return;
             }
 
-            // Parsear la fecha seleccionada
-            const partesFecha = fechaInput.split('-'); // YYYY-MM-DD
+            const partesFecha = fechaInput.split('-');
             const anioSel = partesFecha[0];
             const mesSel = partesFecha[1];
             const diaSel = parseInt(partesFecha[2], 10);
 
-            // Regla: Si es el día 1 del mes, inicia en viaje 1
             if (diaSel === 1) {
                 document.getElementById('f_viaje').value = 1;
                 return;
             }
 
-            // Buscar en el almacenamiento local viajes previos del mismo operador en el mismo mes/año
             const bd = JSON.parse(localStorage.getItem('bd_transporte') || '[]');
-            
             const viajesDelMes = bd.filter(item => {
                 if (item.tipo !== 'combustible' || !item.operador || !item.fecha) return false;
-                
                 const partesItem = item.fecha.split('-');
-                const coincideOperador = item.operador.trim().toLowerCase() === operadorInput;
-                const coincideMesAnio = partesItem[0] === anioSel && partesItem[1] === mesSel;
-
-                return coincideOperador && coincideMesAnio;
+                return item.operador.trim().toLowerCase() === operadorInput && partesItem[0] === anioSel && partesItem[1] === mesSel;
             });
 
             if (viajesDelMes.length === 0) {
                 document.getElementById('f_viaje').value = 1;
             } else {
-                // Obtener el número de viaje más alto registrado en el mes y sumar 1
                 const maxViaje = Math.max(...viajesDelMes.map(v => parseInt(v.num_viaje || 0, 10)));
                 document.getElementById('f_viaje').value = maxViaje + 1;
             }
+        }
+
+        // CONSULTA PRÉ-RUTA PARA CARGAR EL TAG IAVE
+        function consultarMontoIaveRuta() {
+            const rutaBuscar = document.getElementById('cotiz_ruta').value.trim().toLowerCase();
+            const opBuscar = document.getElementById('cotiz_operador').value.trim().toLowerCase();
+
+            if (!rutaBuscar) {
+                alert('⚠️ Escribe el destino o ruta para consultar.');
+                return;
+            }
+
+            const bd = JSON.parse(localStorage.getItem('bd_transporte') || '[]');
+            
+            // Filtrar las casetas que coincidan con la ruta
+            const casetasRuta = bd.filter(item => {
+                if (item.tipo !== 'iave') return false;
+                const matchRuta = item.detalles && item.detalles.toLowerCase().includes(rutaBuscar);
+                const matchOp = !opBuscar || (item.operador && item.operador.toLowerCase().includes(opBuscar));
+                return matchRuta && matchOp;
+            });
+
+            if (casetasRuta.length === 0) {
+                alert('ℹ️ No hay registros previos para esa ruta en la base de datos.');
+                document.getElementById('resultado-cotizacion').style.display = 'none';
+                return;
+            }
+
+            // Sumar todas las casetas registradas para ese trayecto
+            const sumaTotal = casetasRuta.reduce((acc, curr) => acc + (parseFloat(curr.monto) || 0), 0);
+
+            document.getElementById('res_ruta').innerText = rutaBuscar.toUpperCase();
+            document.getElementById('res_monto').innerText = `$${sumaTotal.toFixed(2)} MXN`;
+            document.getElementById('res_pasos').innerText = casetasRuta.length;
+            document.getElementById('resultado-cotizacion').style.display = 'block';
         }
 
         function calcCombustible() {
@@ -252,6 +328,7 @@
                 data.fecha = document.getElementById('f_fecha').value;
                 data.operador = document.getElementById('f_operador').value;
                 data.num_viaje = document.getElementById('f_viaje').value;
+                data.tiempo = document.getElementById('f_tiempototal').value || '-';
                 data.detalles = `${document.getElementById('f_origen').value} -> ${document.getElementById('f_destino').value} (${document.getElementById('f_km').value} km)`;
                 data.valor = `${document.getElementById('t_consumido').value} L | Rend: ${document.getElementById('t_rendimiento').value} Km/L`;
                 data.monto = 0;
@@ -260,7 +337,8 @@
                 data.fecha = document.getElementById('i_fechahora').value;
                 data.operador = document.getElementById('i_operador').value;
                 data.num_viaje = '-';
-                data.detalles = `Caseta: ${document.getElementById('i_caseta').value} (${document.getElementById('i_tipo').value})`;
+                data.tiempo = '-';
+                data.detalles = `${document.getElementById('i_destino').value} | Caseta: ${document.getElementById('i_caseta').value} (${document.getElementById('i_tipo').value})`;
                 data.valor = `$${document.getElementById('i_importe').value} MXN`;
                 data.monto = parseFloat(document.getElementById('i_importe').value) || 0;
                 data.rend = 0;
@@ -271,7 +349,6 @@
             localStorage.setItem('bd_transporte', JSON.stringify(bd));
             alert('✅ Registro guardado localmente.');
 
-            // Recalcular el número de viaje para el siguiente registro
             if (tipo === 'combustible') calcularNumeroViajeAuto();
         }
 
@@ -288,7 +365,6 @@
                 }
             });
 
-            // Gráfica Casetas
             let ctx1 = document.getElementById('chartPeajes').getContext('2d');
             if(myChartPeajes) myChartPeajes.destroy();
             myChartPeajes = new Chart(ctx1, {
@@ -300,7 +376,6 @@
                 options: { responsive: true, maintainAspectRatio: false }
             });
 
-            // Gráfica Rendimiento
             let ctx2 = document.getElementById('chartRendimiento').getContext('2d');
             if(myChartRend) myChartRend.destroy();
             myChartRend = new Chart(ctx2, {
@@ -320,9 +395,9 @@
             let areaPDF = document.getElementById('reporte-pdf-area');
             let contenido = document.getElementById('contenido-pdf');
             
-            let html = `<h3>Cotejo de Registros Tabulados</h3><table><thead><tr><th>Fecha</th><th>Módulo</th><th>Operador</th><th>N° Viaje</th><th>Detalles</th><th>Monto / Rendimiento</th></tr></thead><tbody>`;
+            let html = `<h3>Cotejo de Registros Tabulados</h3><table><thead><tr><th>Fecha</th><th>Módulo</th><th>Operador</th><th>N° Viaje</th><th>Detalles</th><th>Monto / Rendimiento</th><th>Tiempo Total</th></tr></thead><tbody>`;
             bd.forEach(d => {
-                html += `<tr><td>${d.fecha}</td><td>${d.tipo.toUpperCase()}</td><td>${d.operador}</td><td>${d.num_viaje || '-'}</td><td>${d.detalles}</td><td>${d.valor}</td></tr>`;
+                html += `<tr><td>${d.fecha}</td><td>${d.tipo.toUpperCase()}</td><td>${d.operador}</td><td>${d.num_viaje || '-'}</td><td>${d.detalles}</td><td>${d.valor}</td><td>${d.tiempo || '-'}</td></tr>`;
             });
             html += `</tbody></table>`;
             
@@ -349,7 +424,7 @@
             tbody.innerHTML = '';
             datos.forEach(d => {
                 let tr = document.createElement('tr');
-                tr.innerHTML = `<td>${d.fecha}</td><td><b>${d.tipo.toUpperCase()}</b></td><td>${d.operador}</td><td><b>${d.num_viaje || '-'}</b></td><td>${d.detalles}</td><td>${d.valor}</td>`;
+                tr.innerHTML = `<td>${d.fecha}</td><td><b>${d.tipo.toUpperCase()}</b></td><td>${d.operador}</td><td><b>${d.num_viaje || '-'}</b></td><td>${d.detalles}</td><td>${d.valor}</td><td><b>${d.tiempo || '-'}</b></td>`;
                 tbody.appendChild(tr);
             });
         }
@@ -370,7 +445,7 @@
             renderTabla(filtrados);
         }
 
-        // Registro robusto del Service Worker
+        // Registro del Service Worker
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
                 navigator.serviceWorker.register('/sw.js')
