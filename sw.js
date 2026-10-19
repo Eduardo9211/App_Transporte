@@ -1,4 +1,4 @@
-const CACHE_NAME = 'transporte-v2';
+const CACHE_NAME = 'transporte-v3';
 const urlsToCache = [
   './',
   './index.html',
@@ -39,7 +39,7 @@ self.addEventListener('fetch', event => {
         // Opcional: si la petición es externa (CDNs), podemos dejar que pase directo por la red
         return fetchResponse;
       }).catch(() => {
-        // Fallback en caso de que no haya red ni caché (opcionalmente podrías retornar una vista offline)
+        // Fallback en caso de que no haya red ni caché
         if (event.request.mode === 'navigate') {
           return caches.match('./index.html');
         }
