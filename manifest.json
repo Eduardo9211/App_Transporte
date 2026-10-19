@@ -1,0 +1,9 @@
+{
+  "short_name": "TransporteApp",
+  "name": "Control de Transporte y Casetas",
+  "icons": [],
+  "start_url": "/index.html",
+  "background_color": "#1e3c72",
+  "theme_color": "#1e3c72",
+  "display": "standalone"
+}
