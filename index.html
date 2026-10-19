@@ -57,9 +57,9 @@
             <h2>Control de Combustible (Doble Tanque)</h2>
             <form id="fuelForm">
                 <div class="grid">
-                    <div><label>N° Viaje</label><input type="number" id="f_viaje" value="1"></div>
-                    <div><label>Fecha</label><input type="date" id="f_fecha"></div>
-                    <div><label>Operador</label><input type="text" id="f_operador" placeholder="Ej. Juan Pérez"></div>
+                    <div><label>Fecha</label><input type="date" id="f_fecha" onchange="calcularNumeroViajeAuto()"></div>
+                    <div><label>Operador</label><input type="text" id="f_operador" placeholder="Ej. Juan Pérez" oninput="calcularNumeroViajeAuto()"></div>
+                    <div><label>N° Viaje (Auto)</label><input type="number" id="f_viaje" value="1" readonly style="background-color: #e9ecef; font-weight: bold; color: #1e3c72;"></div>
                     <div><label>Origen</label><input type="text" id="f_origen" placeholder="MEX - TLALNEPAN"></div>
                     <div><label>Destino</label><input type="text" id="f_destino" placeholder="MEX - LA FRAGUA"></div>
                     <div><label>Km Recorridos</label><input type="number" step="0.1" id="f_km"></div>
@@ -142,6 +142,7 @@
                             <th>Fecha/Hora</th>
                             <th>Módulo</th>
                             <th>Operador</th>
+                            <th>N° Viaje</th>
                             <th>Detalle / Ruta</th>
                             <th>Monto / Consumo</th>
                         </tr>
@@ -164,6 +165,13 @@
         let myChartPeajes = null;
         let myChartRend = null;
 
+        // Establecer fecha de hoy al iniciar la app
+        window.addEventListener('DOMContentLoaded', () => {
+            const hoy = new Date().toISOString().split('T')[0];
+            document.getElementById('f_fecha').value = hoy;
+            calcularNumeroViajeAuto();
+        });
+
         function cambiarPestaña(evt, idTab) {
             let contents = document.getElementsByClassName("tab-content");
             for (let c of contents) c.classList.remove("active");
@@ -173,6 +181,50 @@
             evt.currentTarget.classList.add("active");
             if(idTab === 'tab-historial') cargarHistorial();
             if(idTab === 'tab-comparativa') actualizarGraficas();
+        }
+
+        // LÓGICA AUTOMÁTICA DEL NÚMERO DE VIAJE
+        function calcularNumeroViajeAuto() {
+            const operadorInput = document.getElementById('f_operador').value.trim().toLowerCase();
+            const fechaInput = document.getElementById('f_fecha').value;
+
+            if (!fechaInput || !operadorInput) {
+                document.getElementById('f_viaje').value = 1;
+                return;
+            }
+
+            // Parsear la fecha seleccionada
+            const partesFecha = fechaInput.split('-'); // YYYY-MM-DD
+            const anioSel = partesFecha[0];
+            const mesSel = partesFecha[1];
+            const diaSel = parseInt(partesFecha[2], 10);
+
+            // Regla: Si es el día 1 del mes, inicia en viaje 1
+            if (diaSel === 1) {
+                document.getElementById('f_viaje').value = 1;
+                return;
+            }
+
+            // Buscar en el almacenamiento local viajes previos del mismo operador en el mismo mes/año
+            const bd = JSON.parse(localStorage.getItem('bd_transporte') || '[]');
+            
+            const viajesDelMes = bd.filter(item => {
+                if (item.tipo !== 'combustible' || !item.operador || !item.fecha) return false;
+                
+                const partesItem = item.fecha.split('-');
+                const coincideOperador = item.operador.trim().toLowerCase() === operadorInput;
+                const coincideMesAnio = partesItem[0] === anioSel && partesItem[1] === mesSel;
+
+                return coincideOperador && coincideMesAnio;
+            });
+
+            if (viajesDelMes.length === 0) {
+                document.getElementById('f_viaje').value = 1;
+            } else {
+                // Obtener el número de viaje más alto registrado en el mes y sumar 1
+                const maxViaje = Math.max(...viajesDelMes.map(v => parseInt(v.num_viaje || 0, 10)));
+                document.getElementById('f_viaje').value = maxViaje + 1;
+            }
         }
 
         function calcCombustible() {
@@ -199,6 +251,7 @@
             if(tipo === 'combustible') {
                 data.fecha = document.getElementById('f_fecha').value;
                 data.operador = document.getElementById('f_operador').value;
+                data.num_viaje = document.getElementById('f_viaje').value;
                 data.detalles = `${document.getElementById('f_origen').value} -> ${document.getElementById('f_destino').value} (${document.getElementById('f_km').value} km)`;
                 data.valor = `${document.getElementById('t_consumido').value} L | Rend: ${document.getElementById('t_rendimiento').value} Km/L`;
                 data.monto = 0;
@@ -206,6 +259,7 @@
             } else {
                 data.fecha = document.getElementById('i_fechahora').value;
                 data.operador = document.getElementById('i_operador').value;
+                data.num_viaje = '-';
                 data.detalles = `Caseta: ${document.getElementById('i_caseta').value} (${document.getElementById('i_tipo').value})`;
                 data.valor = `$${document.getElementById('i_importe').value} MXN`;
                 data.monto = parseFloat(document.getElementById('i_importe').value) || 0;
@@ -216,6 +270,9 @@
             bd.push(data);
             localStorage.setItem('bd_transporte', JSON.stringify(bd));
             alert('✅ Registro guardado localmente.');
+
+            // Recalcular el número de viaje para el siguiente registro
+            if (tipo === 'combustible') calcularNumeroViajeAuto();
         }
 
         function actualizarGraficas() {
@@ -263,9 +320,9 @@
             let areaPDF = document.getElementById('reporte-pdf-area');
             let contenido = document.getElementById('contenido-pdf');
             
-            let html = `<h3>Cotejo de Registros Tabulados</h3><table><thead><tr><th>Fecha</th><th>Módulo</th><th>Operador</th><th>Detalles</th><th>Monto / Rendimiento</th></tr></thead><tbody>`;
+            let html = `<h3>Cotejo de Registros Tabulados</h3><table><thead><tr><th>Fecha</th><th>Módulo</th><th>Operador</th><th>N° Viaje</th><th>Detalles</th><th>Monto / Rendimiento</th></tr></thead><tbody>`;
             bd.forEach(d => {
-                html += `<tr><td>${d.fecha}</td><td>${d.tipo.toUpperCase()}</td><td>${d.operador}</td><td>${d.detalles}</td><td>${d.valor}</td></tr>`;
+                html += `<tr><td>${d.fecha}</td><td>${d.tipo.toUpperCase()}</td><td>${d.operador}</td><td>${d.num_viaje || '-'}</td><td>${d.detalles}</td><td>${d.valor}</td></tr>`;
             });
             html += `</tbody></table>`;
             
@@ -286,17 +343,34 @@
         }
 
         function cargarHistorial() { renderTabla(JSON.parse(localStorage.getItem('bd_transporte') || '[]')); }
+        
         function renderTabla(datos) {
             let tbody = document.querySelector('#tabla-historial tbody');
             tbody.innerHTML = '';
             datos.forEach(d => {
                 let tr = document.createElement('tr');
-                tr.innerHTML = `<td>${d.fecha}</td><td><b>${d.tipo.toUpperCase()}</b></td><td>${d.operador}</td><td>${d.detalles}</td><td>${d.valor}</td>`;
+                tr.innerHTML = `<td>${d.fecha}</td><td><b>${d.tipo.toUpperCase()}</b></td><td>${d.operador}</td><td><b>${d.num_viaje || '-'}</b></td><td>${d.detalles}</td><td>${d.valor}</td>`;
                 tbody.appendChild(tr);
             });
         }
 
-        // Registro robusto del Service Worker con ruta absoluta
+        function filtrarHistorial() {
+            let op = document.getElementById('filtro_operador').value.toLowerCase().trim();
+            let inicio = document.getElementById('filtro_inicio').value;
+            let fin = document.getElementById('filtro_fin').value;
+            let bd = JSON.parse(localStorage.getItem('bd_transporte') || '[]');
+
+            let filtrados = bd.filter(item => {
+                let matchOp = !op || (item.operador && item.operador.toLowerCase().includes(op));
+                let matchInicio = !inicio || item.fecha >= inicio;
+                let matchFin = !fin || item.fecha <= fin;
+                return matchOp && matchInicio && matchFin;
+            });
+
+            renderTabla(filtrados);
+        }
+
+        // Registro robusto del Service Worker
         if ('serviceWorker' in navigator) {
             window.addEventListener('load', () => {
                 navigator.serviceWorker.register('/sw.js')
