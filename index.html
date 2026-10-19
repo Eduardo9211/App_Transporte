@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Control de Transporte y Flotas</title>
     <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#1e3c72">
     <!-- Librerías para Gráficas y PDF Automático -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
@@ -295,7 +296,14 @@
             });
         }
 
-        if ('serviceWorker' in navigator) { navigator.serviceWorker.register('sw.js'); }
+        // Registro robusto del Service Worker con ruta absoluta
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('/sw.js')
+                    .then(reg => console.log('Service Worker registrado correctamente', reg))
+                    .catch(err => console.log('Error al registrar Service Worker', err));
+            });
+        }
     </script>
 </body>
 </html>
