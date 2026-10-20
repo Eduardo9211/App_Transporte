@@ -98,7 +98,6 @@
 
     <!-- PESTAÑA 2: CASETAS E IAVE -->
     <div id="tab-iave" class="tab-content">
-        <!-- CALCULADORA / CERRAR CUENTA DE VIAJE PARA EL JEFE -->
         <div class="card" style="background: #eaf2f8; border: 1px solid #aed6f1;">
             <h2>🧮 Cierre de Cuenta IAVE (Consulta para el Jefe)</h2>
             <p style="font-size: 11px; color: #555; margin-top: -8px;">Calcula el gasto total de casetas y tiempo transcurrido en un rango de fechas/horas para un operador de IAVE.</p>
@@ -278,7 +277,6 @@
 
             let ops = JSON.parse(localStorage.getItem('bd_operadores') || '[]');
             
-            // Verificar duplicado
             if (ops.some(o => o.nombre.toLowerCase() === nombre.toLowerCase())) {
                 alert('⚠️ Ya existe un operador registrado con ese nombre.');
                 return;
