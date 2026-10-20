@@ -22,7 +22,7 @@
         .online { background: #d4edda; color: #155724; }
         
         .tabs { display: flex; background: #1e3c72; border-radius: 6px; overflow: hidden; margin-bottom: 15px; flex-wrap: wrap; }
-        .tab-btn { flex: 1; min-width: 110px; padding: 12px; background: none; border: none; color: white; font-weight: bold; cursor: pointer; text-align: center; margin: 0; }
+        .tab-btn { flex: 1; min-width: 90px; padding: 10px; background: none; border: none; color: white; font-weight: bold; cursor: pointer; text-align: center; margin: 0; font-size: 12px; }
         .tab-btn.active { background: #162a50; border-bottom: 4px solid #f1c40f; }
         .tab-content { display: none; }
         .tab-content.active { display: block; }
@@ -44,10 +44,16 @@
 
     <div id="status-bar" class="status online">🟢 Modo Offline Activo (Compatible PC y Celular)</div>
 
+    <!-- LISTAS AUTOCOMPLETADAS -->
+    <datalist id="lista-operadores-combustible"></datalist>
+    <datalist id="lista-operadores-iave"></datalist>
+    <datalist id="lista-operadores-todos"></datalist>
+
     <div class="tabs">
         <button class="tab-btn active" onclick="cambiarPestaña(event, 'tab-combustible')">⛽ Combustible</button>
-        <button class="tab-btn" onclick="cambiarPestaña(event, 'tab-iave')">💳 Casetas e IAVE</button>
-        <button class="tab-btn" onclick="cambiarPestaña(event, 'tab-comparativa')">📈 Gráficas y Análisis</button>
+        <button class="tab-btn" onclick="cambiarPestaña(event, 'tab-iave')">💳 Casetas</button>
+        <button class="tab-btn" onclick="cambiarPestaña(event, 'tab-operadores')">👥 Operadores</button>
+        <button class="tab-btn" onclick="cambiarPestaña(event, 'tab-comparativa')">📈 Gráficas</button>
         <button class="tab-btn" onclick="cambiarPestaña(event, 'tab-historial')">📊 Generar PDF</button>
     </div>
 
@@ -59,7 +65,10 @@
                 <input type="hidden" id="edit_index_combustible" value="-1">
                 <div class="grid">
                     <div><label>Fecha Registro</label><input type="date" id="f_fecha" onchange="calcularNumeroViajeAuto()"></div>
-                    <div><label>Operador Combustible</label><input type="text" id="f_operador" placeholder="Ej. Juan Pérez" oninput="calcularNumeroViajeAuto()"></div>
+                    <div>
+                        <label>Operador Combustible</label>
+                        <input type="text" id="f_operador" list="lista-operadores-combustible" placeholder="Escribe o selecciona..." oninput="calcularNumeroViajeAuto()">
+                    </div>
                     <div><label>N° Registro / Día</label><input type="number" id="f_viaje" value="1" readonly style="background-color: #e9ecef; font-weight: bold; color: #1e3c72;"></div>
                     <div><label>Origen (Opcional)</label><input type="text" id="f_origen" placeholder="MEX - TLALNEPAN"></div>
                     <div><label>Destino (Opcional)</label><input type="text" id="f_destino" placeholder="MEX - LA FRAGUA"></div>
@@ -87,14 +96,17 @@
         </div>
     </div>
 
-    <!-- PESTAÑA 2: CASETAS E IAVE CON CERRAR CUENTA POR FECHAS -->
+    <!-- PESTAÑA 2: CASETAS E IAVE -->
     <div id="tab-iave" class="tab-content">
         <!-- CALCULADORA / CERRAR CUENTA DE VIAJE PARA EL JEFE -->
         <div class="card" style="background: #eaf2f8; border: 1px solid #aed6f1;">
             <h2>🧮 Cierre de Cuenta IAVE (Consulta para el Jefe)</h2>
             <p style="font-size: 11px; color: #555; margin-top: -8px;">Calcula el gasto total de casetas y tiempo transcurrido en un rango de fechas/horas para un operador de IAVE.</p>
             <div class="grid">
-                <div><label>Operador IAVE</label><input type="text" id="cierre_operador" placeholder="Ej. Alvaro"></div>
+                <div>
+                    <label>Operador IAVE</label>
+                    <input type="text" id="cierre_operador" list="lista-operadores-iave" placeholder="Escribe o selecciona...">
+                </div>
                 <div><label>Fecha/Hora Inicio Viaje</label><input type="datetime-local" id="cierre_inicio"></div>
                 <div><label>Fecha/Hora Fin Viaje</label><input type="datetime-local" id="cierre_fin"></div>
             </div>
@@ -114,7 +126,10 @@
             <form id="iaveForm">
                 <input type="hidden" id="edit_index_iave" value="-1">
                 <div class="grid">
-                    <div><label>Operador IAVE</label><input type="text" id="i_operador" placeholder="Ej. Alvaro"></div>
+                    <div>
+                        <label>Operador IAVE</label>
+                        <input type="text" id="i_operador" list="lista-operadores-iave" placeholder="Escribe o selecciona..." onchange="autocompletarTagOperador()">
+                    </div>
                     <div><label>TAG IAVE</label><input type="text" id="i_tag" placeholder="CPFI11489490"></div>
                     <div><label>Ruta / Destino (Opcional)</label><input type="text" id="i_destino" placeholder="Ej. CHAPALA"></div>
                     <div><label>Tipo de Viaje</label><select id="i_tipo"><option>IDA</option><option>VUELTA</option></select></div>
@@ -127,7 +142,45 @@
         </div>
     </div>
 
-    <!-- PESTAÑA 3: GRÁFICAS SEPARADAS POR ÁREA -->
+    <!-- PESTAÑA NUEVA: CATÁLOGO DE OPERADORES -->
+    <div id="tab-operadores" class="tab-content">
+        <div class="card">
+            <h2>👥 Catálogo de Operadores</h2>
+            <p style="font-size: 11px; color: #555; margin-top: -8px;">Registra tus choferes aquí para que se autocompleten rápido en el resto de la app.</p>
+            <form id="opForm">
+                <div class="grid">
+                    <div><label>Nombre del Chofer / Operador</label><input type="text" id="op_nombre" placeholder="Ej. Álvaro López"></div>
+                    <div>
+                        <label>Área / Especialidad</label>
+                        <select id="op_area">
+                            <option value="IAVE">Casetas / IAVE</option>
+                            <option value="Combustible">Combustible</option>
+                            <option value="Ambos">Ambos Módulos</option>
+                        </select>
+                    </div>
+                    <div><label>N° TAG IAVE (Opcional)</label><input type="text" id="op_tag" placeholder="CPFI11489490"></div>
+                </div>
+                <button type="button" style="background: #27ae60;" onclick="guardarOperador()">➕ Agregar Chofer al Catálogo</button>
+            </form>
+
+            <h3 style="margin-top: 20px;">Lista de Choferes Registrados</h3>
+            <div style="overflow-x: auto;">
+                <table id="tabla-operadores">
+                    <thead>
+                        <tr>
+                            <th>Nombre</th>
+                            <th>Área</th>
+                            <th>TAG IAVE</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- PESTAÑA 4: GRÁFICAS SEPARADAS POR ÁREA -->
     <div id="tab-comparativa" class="tab-content">
         <div class="card">
             <h2>Análisis de Flotas (Gráficas Independientes)</h2>
@@ -145,12 +198,15 @@
         </div>
     </div>
 
-    <!-- PESTAÑA 4: HISTORIAL Y PDF -->
+    <!-- PESTAÑA 5: HISTORIAL Y PDF -->
     <div id="tab-historial" class="tab-content">
         <div class="card">
             <h2>Historial General y Generador de PDF</h2>
             <div class="grid">
-                <div><label>Filtrar Operador</label><input type="text" id="filtro_operador" placeholder="Ej. Alvaro o Juan"></div>
+                <div>
+                    <label>Filtrar Operador</label>
+                    <input type="text" id="filtro_operador" list="lista-operadores-todos" placeholder="Escribe o selecciona...">
+                </div>
                 <div><label>Fecha Inicio</label><input type="date" id="filtro_inicio"></div>
                 <div><label>Fecha Fin</label><input type="date" id="filtro_fin"></div>
             </div>
@@ -193,6 +249,7 @@
         window.addEventListener('DOMContentLoaded', () => {
             const hoy = new Date().toISOString().split('T')[0];
             document.getElementById('f_fecha').value = hoy;
+            actualizarListasOperadores();
             calcularNumeroViajeAuto();
         });
 
@@ -205,6 +262,95 @@
             if (evt) evt.currentTarget.classList.add("active");
             if(idTab === 'tab-historial') cargarHistorial();
             if(idTab === 'tab-comparativa') actualizarGraficas();
+            if(idTab === 'tab-operadores') cargarTablaOperadores();
+        }
+
+        // GESTIÓN DE OPERADORES Y AUTOCOMPLETADO
+        function guardarOperador() {
+            const nombre = document.getElementById('op_nombre').value.trim();
+            const area = document.getElementById('op_area').value;
+            const tag = document.getElementById('op_tag').value.trim();
+
+            if (!nombre) {
+                alert('⚠️ Escribe el nombre del operador.');
+                return;
+            }
+
+            let ops = JSON.parse(localStorage.getItem('bd_operadores') || '[]');
+            
+            // Verificar duplicado
+            if (ops.some(o => o.nombre.toLowerCase() === nombre.toLowerCase())) {
+                alert('⚠️ Ya existe un operador registrado con ese nombre.');
+                return;
+            }
+
+            ops.push({ nombre, area, tag });
+            localStorage.setItem('bd_operadores', JSON.stringify(ops));
+
+            document.getElementById('op_nombre').value = '';
+            document.getElementById('op_tag').value = '';
+
+            cargarTablaOperadores();
+            actualizarListasOperadores();
+            alert('✅ Operador agregado al catálogo.');
+        }
+
+        function cargarTablaOperadores() {
+            let ops = JSON.parse(localStorage.getItem('bd_operadores') || '[]');
+            let tbody = document.querySelector('#tabla-operadores tbody');
+            tbody.innerHTML = '';
+            ops.forEach((op, index) => {
+                let tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td><b>${op.nombre}</b></td>
+                    <td>${op.area}</td>
+                    <td>${op.tag || '-'}</td>
+                    <td><button class="btn-action btn-delete" onclick="eliminarOperador(${index})">🗑️</button></td>`;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function eliminarOperador(index) {
+            if (confirm('⚠️ ¿Eliminar este operador del catálogo?')) {
+                let ops = JSON.parse(localStorage.getItem('bd_operadores') || '[]');
+                ops.splice(index, 1);
+                localStorage.setItem('bd_operadores', JSON.stringify(ops));
+                cargarTablaOperadores();
+                actualizarListasOperadores();
+            }
+        }
+
+        function actualizarListasOperadores() {
+            let ops = JSON.parse(localStorage.getItem('bd_operadores') || '[]');
+            
+            let listComb = document.getElementById('lista-operadores-combustible');
+            let listIave = document.getElementById('lista-operadores-iave');
+            let listTodos = document.getElementById('lista-operadores-todos');
+
+            listComb.innerHTML = '';
+            listIave.innerHTML = '';
+            listTodos.innerHTML = '';
+
+            ops.forEach(op => {
+                let opt = `<option value="${op.nombre}">`;
+                listTodos.innerHTML += opt;
+
+                if (op.area === 'Combustible' || op.area === 'Ambos') {
+                    listComb.innerHTML += opt;
+                }
+                if (op.area === 'IAVE' || op.area === 'Ambos') {
+                    listIave.innerHTML += opt;
+                }
+            });
+        }
+
+        function autocompletarTagOperador() {
+            const nombreSel = document.getElementById('i_operador').value.trim().toLowerCase();
+            let ops = JSON.parse(localStorage.getItem('bd_operadores') || '[]');
+            let coincidencia = ops.find(o => o.nombre.toLowerCase() === nombreSel);
+            if (coincidencia && coincidencia.tag) {
+                document.getElementById('i_tag').value = coincidencia.tag;
+            }
         }
 
         function calcularNumeroViajeAuto() {
@@ -241,7 +387,6 @@
             }
         }
 
-        // SACAR CUENTA IAVE POR FECHAS/HORAS Y TIEMPO TRANSCURRIDO
         function calcularCierreCuentaIave() {
             const opBuscar = document.getElementById('cierre_operador').value.trim().toLowerCase();
             const fInicio = document.getElementById('cierre_inicio').value;
@@ -268,9 +413,7 @@
                 return;
             }
 
-            // Ordenar por fecha para sacar tiempo del primer y último paso
             casetasFiltradas.sort((a, b) => new Date(a.fecha) - new Date(b.fecha));
-
             const sumaTotal = casetasFiltradas.reduce((acc, curr) => acc + (parseFloat(curr.monto) || 0), 0);
 
             let tiempoTexto = "No determinado";
@@ -443,7 +586,6 @@
                 }
             });
 
-            // Gráfica de Casetas (Solo IAVE)
             let ctx1 = document.getElementById('chartPeajes').getContext('2d');
             if(myChartPeajes) myChartPeajes.destroy();
             myChartPeajes = new Chart(ctx1, {
@@ -455,7 +597,6 @@
                 options: { responsive: true, maintainAspectRatio: false }
             });
 
-            // Gráfica de Combustible (Solo Combustible)
             let ctx2 = document.getElementById('chartRendimiento').getContext('2d');
             if(myChartRend) myChartRend.destroy();
             myChartRend = new Chart(ctx2, {
