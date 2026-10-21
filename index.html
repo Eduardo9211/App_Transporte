@@ -58,30 +58,53 @@
         <button class="tab-btn" onclick="cambiarPestaña(event, 'tab-historial')">📊 Generar PDF</button>
     </div>
 
-    <!-- PESTAÑA 1: COMBUSTIBLE DIARIO Y CONSULTA RÁPIDA -->
+    <!-- PESTAÑA 1: COMBUSTIBLE DIARIO, ESTIMADOR DE RUTA Y CIERRE MENSUAL -->
     <div id="tab-combustible" class="tab-content active">
-        <!-- CONSULTA RÁPIDA DE COMBUSTIBLE PARA EL JEFE -->
+        <!-- ESTIMADOR DE RUTA COMBUSTIBLE BASADO EN HISTORIAL -->
         <div class="card" style="background: #fef9e7; border: 1px solid #f9e79f;">
-            <h2>🧮 Consulta Rápida de Combustible (Resumen para el Jefe)</h2>
-            <p style="font-size: 11px; color: #555; margin-top: -8px;">Calcula el rendimiento, kilómetros y litros consumidos de un operador en un periodo.</p>
+            <h2>🔮 Estimador Pré-Ruta: Presupuesto de Combustible</h2>
+            <p style="font-size: 11px; color: #555; margin-top: -8px;">Calcula consumo estimado en Litros, Km y Dinero para una ruta futura según el historial.</p>
+            <div class="grid">
+                <div>
+                    <label>Operador (Opcional)</label>
+                    <input type="text" id="est_fuel_op" list="lista-operadores-combustible" placeholder="Todos / Seleccionar...">
+                </div>
+                <div><label>Origen / Tramo</label><input type="text" id="est_fuel_origen" placeholder="Ej. Tepotzotlán"></div>
+                <div><label>Destino / Ruta</label><input type="text" id="est_fuel_destino" placeholder="Ej. Guanajuato"></div>
+                <div><label>Mes Referencia (Opcional)</label><input type="month" id="est_fuel_mes"></div>
+                <div><label>Precio Diésel/L ($ MXN)</label><input type="number" step="0.1" id="est_fuel_precio" value="24.50"></div>
+            </div>
+            <button type="button" style="background: #f39c12;" onclick="estimarRutaCombustible()">🔮 Estimar Gasto y Consumo de Combustible</button>
+
+            <div id="resultado-estimador-fuel" class="resumen-fuel" style="display: none;">
+                <h4>Estimación para la Ruta: <span id="res_est_fuel_ruta">-</span></h4>
+                <p style="margin: 3px 0;"><strong>Basado en:</strong> <span id="res_est_fuel_coincidencias">0</span> viajes históricos encontrados</p>
+                <p style="margin: 3px 0;"><strong>Consumo Promedio Estimado:</strong> <span id="res_est_fuel_litros" style="font-weight: bold; font-size: 15px; color:#d35400;">0 L</span></p>
+                <p style="margin: 3px 0;"><strong>Distancia Promedio:</strong> <span id="res_est_fuel_km">0 km</span> | <strong>Rendimiento Esperado:</strong> <span id="res_est_fuel_rend">0 Km/L</span></p>
+                <p style="margin: 3px 0;"><strong>Costo Aprox. de Combustible:</strong> <span id="res_est_fuel_costo" style="font-size: 18px; color: #27ae60; font-weight: bold;">$0.00 MXN</span></p>
+            </div>
+        </div>
+
+        <!-- CONSULTA / CIERRE MENSUAL DE COMBUSTIBLE PARA EL JEFE -->
+        <div class="card" style="background: #ffffff; border: 1px solid #ddd;">
+            <h2>🧮 Cierre Mensual de Combustible (Resumen para el Jefe)</h2>
             <div class="grid">
                 <div>
                     <label>Operador Combustible</label>
                     <input type="text" id="cierre_fuel_operador" list="lista-operadores-combustible" placeholder="Escribe o selecciona...">
                 </div>
-                <div><label>Fecha Inicio</label><input type="date" id="cierre_fuel_inicio"></div>
-                <div><label>Fecha Fin</label><input type="date" id="cierre_fuel_fin"></div>
+                <div><label>Seleccionar Mes / Año</label><input type="month" id="cierre_fuel_mes"></div>
             </div>
-            <button type="button" style="background: #f39c12;" onclick="calcularResumenCombustible()">⛽ Sacar Resumen de Combustible</button>
+            <button type="button" style="background: #1e3c72;" onclick="calcularCierreMensualCombustible()">📅 Generar Cierre del Mes</button>
 
             <div id="resultado-cierre-fuel" class="resumen-fuel" style="display: none;">
-                <h4>Resumen de Combustible:</h4>
+                <h4>Resumen Mensual de Combustible:</h4>
                 <p style="margin: 3px 0;"><strong>Operador:</strong> <span id="res_fuel_op">-</span></p>
-                <p style="margin: 3px 0;"><strong>Km Recorridos:</strong> <span id="res_fuel_km" style="font-weight: bold;">0 km</span></p>
+                <p style="margin: 3px 0;"><strong>Km Recorridos en el Mes:</strong> <span id="res_fuel_km" style="font-weight: bold;">0 km</span></p>
                 <p style="margin: 3px 0;"><strong>Litros Consumidos:</strong> <span id="res_fuel_litros" style="font-weight: bold;">0 L</span> (Cargados: <span id="res_fuel_cargados">0</span> L)</p>
-                <p style="margin: 3px 0;"><strong>Rendimiento Promedio:</strong> <span id="res_fuel_rend" style="font-size: 16px; color: #d35400; font-weight: bold;">0 Km/L</span></p>
-                <p style="margin: 3px 0;"><strong>Días Registrados:</strong> <span id="res_fuel_dias">0</span> registros</p>
-                <button type="button" style="background: #e67e22; margin-top: 10px;" onclick="generarPDFResumenFuel()">📄 Descargar PDF de Combustible para el Jefe</button>
+                <p style="margin: 3px 0;"><strong>Rendimiento Promedio Mensual:</strong> <span id="res_fuel_rend" style="font-size: 16px; color: #d35400; font-weight: bold;">0 Km/L</span></p>
+                <p style="margin: 3px 0;"><strong>Días Registrados en el Mes:</strong> <span id="res_fuel_dias">0</span> registros</p>
+                <button type="button" style="background: #e67e22; margin-top: 10px;" onclick="generarPDFResumenFuel()">📄 Descargar PDF Mensual de Combustible</button>
             </div>
         </div>
 
@@ -122,12 +145,33 @@
         </div>
     </div>
 
-    <!-- PESTAÑA 2: CASETAS E IAVE -->
+    <!-- PESTAÑA 2: CASETAS E IAVE, ESTIMADOR Y CIERRE MENSUAL -->
     <div id="tab-iave" class="tab-content">
-        <!-- CALCULADORA / CERRAR CUENTA DE VIAJE PARA EL JEFE -->
+        <!-- ESTIMADOR DE RUTA CASETAS BASADO EN HISTORIAL -->
         <div class="card" style="background: #eaf2f8; border: 1px solid #aed6f1;">
-            <h2>🧮 Cierre de Cuenta IAVE (Consulta para el Jefe)</h2>
-            <p style="font-size: 11px; color: #555; margin-top: -8px;">Calcula el gasto total de casetas y tiempo transcurrido en un rango de fechas/horas para un operador de IAVE.</p>
+            <h2>🔮 Cotizador Pré-Ruta: Presupuesto de Casetas IAVE</h2>
+            <p style="font-size: 11px; color: #555; margin-top: -8px;">Suma el gasto promedio y tiempo estimado entre casetas de una ruta previa (ej. Tepotzotlán a Chapala / Guadalajara).</p>
+            <div class="grid">
+                <div>
+                    <label>Operador (Opcional)</label>
+                    <input type="text" id="est_iave_op" list="lista-operadores-iave" placeholder="Álvaro / Todos...">
+                </div>
+                <div><label>Ruta / Destino a Cotizar</label><input type="text" id="est_iave_destino" placeholder="Ej. Chapala o Guadalajara"></div>
+                <div><label>Mes Referencia (Opcional)</label><input type="month" id="est_iave_mes"></div>
+            </div>
+            <button type="button" style="background: #27ae60;" onclick="estimarRutaIave()">💰 Calcular Presupuesto de Casetas y Tiempo</button>
+
+            <div id="resultado-estimador-iave" class="resumen-iave" style="display: none;">
+                <h4>Presupuesto Estimado de Casetas: <span id="res_est_iave_destino">-</span></h4>
+                <p style="margin: 3px 0;"><strong>Gasto Total Promedio en Casetas:</strong> <span id="res_est_iave_monto" style="font-size: 18px; color: #27ae60; font-weight: bold;">$0.00 MXN</span></p>
+                <p style="margin: 3px 0;"><strong>Tiempo Promedio de Traslado en Ruta:</strong> <span id="res_est_iave_tiempo" style="font-weight: bold; color:#d35400;">0 hrs</span></p>
+                <p style="margin: 3px 0;"><strong>Número de Casetas en el Trayecto:</strong> <span id="res_est_iave_pasos">0</span> casetas</p>
+            </div>
+        </div>
+
+        <!-- CALCULADORA / CERRAR CUENTA DE VIAJE O MES -->
+        <div class="card" style="background: #ffffff; border: 1px solid #ddd;">
+            <h2>🧮 Cierre Mensual / Periodo Casetas IAVE</h2>
             <div class="grid">
                 <div>
                     <label>Operador IAVE</label>
@@ -136,7 +180,7 @@
                 <div><label>Fecha/Hora Inicio Viaje</label><input type="datetime-local" id="cierre_inicio"></div>
                 <div><label>Fecha/Hora Fin Viaje</label><input type="datetime-local" id="cierre_fin"></div>
             </div>
-            <button type="button" style="background: #27ae60;" onclick="calcularCierreCuentaIave()">💰 Sacar Cuenta y Tiempo Total</button>
+            <button type="button" style="background: #1e3c72;" onclick="calcularCierreCuentaIave()">💰 Sacar Cuenta y Tiempo Total</button>
 
             <div id="resultado-cierre" class="resumen-iave" style="display: none;">
                 <h4>Resumen de Cuenta de Viaje:</h4>
@@ -144,7 +188,7 @@
                 <p style="margin: 3px 0;"><strong>Gasto Total Casetas:</strong> <span id="res_monto" style="font-size: 18px; color: #27ae60; font-weight: bold;">$0.00 MXN</span></p>
                 <p style="margin: 3px 0;"><strong>Tiempo de Traslado (Primer a Última Caseta):</strong> <span id="res_tiempo" style="font-weight: bold; color: #d35400;">0 hrs</span></p>
                 <p style="margin: 3px 0;"><strong>Casetas Registradas:</strong> <span id="res_pasos">0</span> casetas</p>
-                <button type="button" style="background: #1e3c72; margin-top: 10px;" onclick="generarPDFCierreIave()">📄 Descargar PDF Cierre IAVE para el Jefe</button>
+                <button type="button" style="background: #27ae60; margin-top: 10px;" onclick="generarPDFCierreIave()">📄 Descargar PDF Cierre IAVE para el Jefe</button>
             </div>
         </div>
 
@@ -173,7 +217,6 @@
     <div id="tab-operadores" class="tab-content">
         <div class="card">
             <h2>👥 Catálogo de Operadores</h2>
-            <p style="font-size: 11px; color: #555; margin-top: -8px;">Registra tus choferes aquí para que se autocompleten rápido en el resto de la app.</p>
             <form id="opForm">
                 <div class="grid">
                     <div><label>Nombre del Chofer / Operador</label><input type="text" id="op_nombre" placeholder="Ej. Álvaro López"></div>
@@ -211,8 +254,6 @@
     <div id="tab-comparativa" class="tab-content">
         <div class="card">
             <h2>Análisis de Flotas (Gráficas Independientes)</h2>
-            <p style="font-size: 11px; color: #555; margin-top: -8px;">Filtra por fechas para comparar el desempeño de tus choferes en un periodo exacto.</p>
-            
             <div class="grid">
                 <div><label>Fecha Inicio Análisis</label><input type="date" id="graf_inicio"></div>
                 <div><label>Fecha Fin Análisis</label><input type="date" id="graf_fin"></div>
@@ -305,105 +346,139 @@
             if(idTab === 'tab-operadores') cargarTablaOperadores();
         }
 
-        // GESTIÓN DE OPERADORES Y AUTOCOMPLETADO
-        function guardarOperador() {
-            const nombre = document.getElementById('op_nombre').value.trim();
-            const area = document.getElementById('op_area').value;
-            const tag = document.getElementById('op_tag').value.trim();
+        // ESTIMADOR DE RUTA FUTURA DE COMBUSTIBLE
+        function estimarRutaCombustible() {
+            const op = document.getElementById('est_fuel_op').value.trim().toLowerCase();
+            const origen = document.getElementById('est_fuel_origen').value.trim().toLowerCase();
+            const destino = document.getElementById('est_fuel_destino').value.trim().toLowerCase();
+            const mesSel = document.getElementById('est_fuel_mes').value;
+            const precioLitro = parseFloat(document.getElementById('est_fuel_precio').value) || 24.50;
 
-            if (!nombre) { alert('⚠️ Escribe el nombre del operador.'); return; }
+            if (!origen && !destino) { alert('⚠️ Ingresa al menos el Origen o Destino de la ruta a estimar.'); return; }
 
-            let ops = JSON.parse(localStorage.getItem('bd_operadores') || '[]');
-            if (ops.some(o => o.nombre.toLowerCase() === nombre.toLowerCase())) {
-                alert('⚠️ Ya existe un operador registrado con ese nombre.');
+            const bd = JSON.parse(localStorage.getItem('bd_transporte') || '[]');
+            const viajesCoincidentes = bd.filter(item => {
+                if (item.tipo !== 'combustible') return false;
+                const matchOp = !op || (item.operador && item.operador.toLowerCase().includes(op));
+                const matchOrigen = !origen || (item.origen && item.origen.toLowerCase().includes(origen)) || (item.detalles && item.detalles.toLowerCase().includes(origen));
+                const matchDestino = !destino || (item.destino && item.destino.toLowerCase().includes(destino)) || (item.detalles && item.detalles.toLowerCase().includes(destino));
+                const matchMes = !mesSel || (item.fecha && item.fecha.startsWith(mesSel));
+                return matchOp && matchOrigen && matchDestino && matchMes;
+            });
+
+            if (viajesCoincidentes.length === 0) {
+                alert('ℹ️ No hay registros previos en el historial que coincidan con esa ruta o filtro.');
+                document.getElementById('resultado-estimador-fuel').style.display = 'none';
                 return;
             }
 
-            ops.push({ nombre, area, tag });
-            localStorage.setItem('bd_operadores', JSON.stringify(ops));
-
-            document.getElementById('op_nombre').value = '';
-            document.getElementById('op_tag').value = '';
-
-            cargarTablaOperadores();
-            actualizarListasOperadores();
-            alert('✅ Operador agregado al catálogo.');
-        }
-
-        function cargarTablaOperadores() {
-            let ops = JSON.parse(localStorage.getItem('bd_operadores') || '[]');
-            let tbody = document.querySelector('#tabla-operadores tbody');
-            tbody.innerHTML = '';
-            ops.forEach((op, index) => {
-                let tr = document.createElement('tr');
-                tr.innerHTML = `
-                    <td><b>${op.nombre}</b></td>
-                    <td>${op.area}</td>
-                    <td>${op.tag || '-'}</td>
-                    <td><button class="btn-action btn-delete" onclick="eliminarOperador(${index})">🗑️</button></td>`;
-                tbody.appendChild(tr);
+            let sumaKm = 0, sumaLitros = 0;
+            viajesCoincidentes.forEach(v => {
+                sumaKm += parseFloat(v.km) || 0;
+                let valSplit = (v.valor || '').split('L');
+                if (valSplit.length > 0) sumaLitros += parseFloat(valSplit[0]) || 0;
             });
+
+            const promKm = (sumaKm / viajesCoincidentes.length).toFixed(1);
+            const promLitros = (sumaLitros / viajesCoincidentes.length).toFixed(1);
+            const promRend = promKm > 0 && promLitros > 0 ? (promKm / promLitros).toFixed(2) : 0;
+            const costoEstimado = (promLitros * precioLitro).toFixed(2);
+
+            document.getElementById('res_est_fuel_ruta').innerText = `${origen.toUpperCase() || 'S/O'} -> ${destino.toUpperCase() || 'S/D'}`;
+            document.getElementById('res_est_fuel_coincidencias').innerText = viajesCoincidentes.length;
+            document.getElementById('res_est_fuel_litros').innerText = `${promLitros} L`;
+            document.getElementById('res_est_fuel_km').innerText = `${promKm} km`;
+            document.getElementById('res_est_fuel_rend').innerText = `${promRend} Km/L`;
+            document.getElementById('res_est_fuel_costo').innerText = `$${costoEstimado} MXN`;
+            document.getElementById('resultado-estimador-fuel').style.display = 'block';
         }
 
-        function eliminarOperador(index) {
-            if (confirm('⚠️ ¿Eliminar este operador del catálogo?')) {
-                let ops = JSON.parse(localStorage.getItem('bd_operadores') || '[]');
-                ops.splice(index, 1);
-                localStorage.setItem('bd_operadores', JSON.stringify(ops));
-                cargarTablaOperadores();
-                actualizarListasOperadores();
-            }
-        }
+        // ESTIMADOR DE RUTA FUTURA DE CASETAS IAVE
+        function estimarRutaIave() {
+            const op = document.getElementById('est_iave_op').value.trim().toLowerCase();
+            const destino = document.getElementById('est_iave_destino').value.trim().toLowerCase();
+            const mesSel = document.getElementById('est_iave_mes').value;
 
-        function actualizarListasOperadores() {
-            let ops = JSON.parse(localStorage.getItem('bd_operadores') || '[]');
-            let listComb = document.getElementById('lista-operadores-combustible');
-            let listIave = document.getElementById('lista-operadores-iave');
-            let listTodos = document.getElementById('lista-operadores-todos');
-
-            listComb.innerHTML = ''; listIave.innerHTML = ''; listTodos.innerHTML = '';
-
-            ops.forEach(op => {
-                let opt = `<option value="${op.nombre}">`;
-                listTodos.innerHTML += opt;
-                if (op.area === 'Combustible' || op.area === 'Ambos') listComb.innerHTML += opt;
-                if (op.area === 'IAVE' || op.area === 'Ambos') listIave.innerHTML += opt;
-            });
-        }
-
-        function autocompletarTagOperador() {
-            const nombreSel = document.getElementById('i_operador').value.trim().toLowerCase();
-            let ops = JSON.parse(localStorage.getItem('bd_operadores') || '[]');
-            let coincidencia = ops.find(o => o.nombre.toLowerCase() === nombreSel);
-            if (coincidencia && coincidencia.tag) document.getElementById('i_tag').value = coincidencia.tag;
-        }
-
-        function calcularNumeroViajeAuto() {
-            const operadorInput = document.getElementById('f_operador').value.trim().toLowerCase();
-            const fechaInput = document.getElementById('f_fecha').value;
-
-            if (!fechaInput || !operadorInput) { document.getElementById('f_viaje').value = 1; return; }
-
-            const partesFecha = fechaInput.split('-');
-            const anioSel = partesFecha[0]; const mesSel = partesFecha[1]; const diaSel = parseInt(partesFecha[2], 10);
-
-            if (diaSel === 1) { document.getElementById('f_viaje').value = 1; return; }
+            if (!destino) { alert('⚠️ Escribe la ruta o destino a cotizar.'); return; }
 
             const bd = JSON.parse(localStorage.getItem('bd_transporte') || '[]');
-            const viajesDelMes = bd.filter(item => {
-                if (item.tipo !== 'combustible' || !item.operador || !item.fecha) return false;
-                const partesItem = item.fecha.split('-');
-                return item.operador.trim().toLowerCase() === operadorInput && partesItem[0] === anioSel && partesItem[1] === mesSel;
+            const casetasCoincidentes = bd.filter(item => {
+                if (item.tipo !== 'iave') return false;
+                const matchOp = !op || (item.operador && item.operador.toLowerCase().includes(op));
+                const matchDestino = (item.destino_iave && item.destino_iave.toLowerCase().includes(destino)) || (item.detalles && item.detalles.toLowerCase().includes(destino));
+                const matchMes = !mesSel || (item.fecha && item.fecha.startsWith(mesSel));
+                return matchOp && matchDestino && matchMes;
             });
 
-            if (viajesDelMes.length === 0) { document.getElementById('f_viaje').value = 1; } 
-            else {
-                const maxViaje = Math.max(...viajesDelMes.map(v => parseInt(v.num_viaje || 0, 10)));
-                document.getElementById('f_viaje').value = maxViaje + 1;
+            if (casetasCoincidentes.length === 0) {
+                alert('ℹ️ No hay casetas registradas previamente para esa ruta.');
+                document.getElementById('resultado-estimador-iave').style.display = 'none';
+                return;
             }
+
+            casetasCoincidentes.sort((a, b) => new Date(a.fecha) - new Date(b.fecha));
+            const sumaTotal = casetasCoincidentes.reduce((acc, curr) => acc + (parseFloat(curr.monto) || 0), 0);
+
+            let tiempoTexto = "1 solo paso de caseta";
+            if (casetasCoincidentes.length >= 2) {
+                const primerPaso = new Date(casetasCoincidentes[0].fecha);
+                const ultimoPaso = new Date(casetasCoincidentes[casetasCoincidentes.length - 1].fecha);
+                const diffMs = ultimoPaso - primerPaso;
+                if (diffMs >= 0) {
+                    const hrs = (diffMs / (1000 * 60 * 60)).toFixed(1);
+                    tiempoTexto = `${hrs} hrs (${(hrs / 24).toFixed(1)} días)`;
+                }
+            }
+
+            document.getElementById('res_est_iave_destino').innerText = destino.toUpperCase();
+            document.getElementById('res_est_iave_monto').innerText = `$${sumaTotal.toFixed(2)} MXN`;
+            document.getElementById('res_est_iave_tiempo').innerText = tiempoTexto;
+            document.getElementById('res_est_iave_pasos').innerText = casetasCoincidentes.length;
+            document.getElementById('resultado-estimador-iave').style.display = 'block';
         }
 
-        // SACAR CUENTA IAVE Y GENERAR PDF DE CIERRE
+        // CIERRE MENSUAL DE COMBUSTIBLE
+        function calcularCierreMensualCombustible() {
+            const opBuscar = document.getElementById('cierre_fuel_operador').value.trim().toLowerCase();
+            const mesSel = document.getElementById('cierre_fuel_mes').value;
+
+            if (!opBuscar || !mesSel) { alert('⚠️ Selecciona el Operador y el Mes/Año.'); return; }
+
+            const bd = JSON.parse(localStorage.getItem('bd_transporte') || '[]');
+            const registrosFiltrados = bd.filter(item => {
+                if (item.tipo !== 'combustible') return false;
+                const matchOp = item.operador && item.operador.toLowerCase().includes(opBuscar);
+                const matchMes = item.fecha && item.fecha.startsWith(mesSel);
+                return matchOp && matchMes;
+            });
+
+            if (registrosFiltrados.length === 0) {
+                alert('ℹ️ No hay registros para este operador en el mes seleccionado.');
+                document.getElementById('resultado-cierre-fuel').style.display = 'none';
+                return;
+            }
+
+            let totalKm = 0, totalLitros = 0, totalCargados = 0;
+            registrosFiltrados.forEach(r => {
+                totalKm += parseFloat(r.km) || 0;
+                let valorSplit = (r.valor || '').split('L');
+                if(valorSplit.length > 0) totalLitros += parseFloat(valorSplit[0]) || 0;
+                totalCargados += parseFloat(r.l_cargados) || 0;
+            });
+
+            let rendPromedio = totalKm > 0 && totalLitros > 0 ? (totalKm / totalLitros).toFixed(2) : 0;
+            datosResumenFuelActual = { op: opBuscar.toUpperCase(), totalKm, totalLitros, totalCargados, rendPromedio, registros: registrosFiltrados, mes: mesSel };
+
+            document.getElementById('res_fuel_op').innerText = opBuscar.toUpperCase();
+            document.getElementById('res_fuel_km').innerText = `${totalKm.toFixed(1)} km`;
+            document.getElementById('res_fuel_litros').innerText = `${totalLitros.toFixed(1)} L`;
+            document.getElementById('res_fuel_cargados').innerText = totalCargados.toFixed(1);
+            document.getElementById('res_fuel_rend').innerText = `${rendPromedio} Km/L`;
+            document.getElementById('res_fuel_dias').innerText = registrosFiltrados.length;
+            document.getElementById('resultado-cierre-fuel').style.display = 'block';
+        }
+
+        // CIERRE CUENTA O PERIODO IAVE
         function calcularCierreCuentaIave() {
             const opBuscar = document.getElementById('cierre_operador').value.trim().toLowerCase();
             const fInicio = document.getElementById('cierre_inicio').value;
@@ -421,7 +496,7 @@
             });
 
             if (casetasFiltradas.length === 0) {
-                alert('ℹ️ No se encontraron casetas para este operador en ese rango de fechas.');
+                alert('ℹ️ No se encontraron casetas para este operador.');
                 document.getElementById('resultado-cierre').style.display = 'none';
                 return;
             }
@@ -449,6 +524,7 @@
             document.getElementById('resultado-cierre').style.display = 'block';
         }
 
+        // GENERACIÓN DE PDFS
         function generarPDFCierreIave() {
             if (!datosCierreIaveActual) return;
             let areaPDF = document.getElementById('reporte-pdf-area');
@@ -458,70 +534,19 @@
                 <h2 style="color:#1e3c72; text-align:center;">LIQUIDACIÓN Y CIERRE DE CUENTA CASETAS IAVE</h2>
                 <div style="background:#eef2f7; padding:10px; border-radius:5px; margin-bottom:15px; font-size:12px;">
                     <p style="margin:3px 0;"><b>Operador:</b> ${datosCierreIaveActual.op}</p>
-                    <p style="margin:3px 0;"><b>Periodo del Viaje:</b> ${datosCierreIaveActual.inicio || 'Inicio'} al ${datosCierreIaveActual.fin || 'Fin'}</p>
-                    <p style="margin:3px 0;"><b>Tiempo Transcurrido (Primer a Última Caseta):</b> ${datosCierreIaveActual.tiempoTexto}</p>
+                    <p style="margin:3px 0;"><b>Tiempo Transcurrido:</b> ${datosCierreIaveActual.tiempoTexto}</p>
                     <p style="margin:3px 0; font-size:14px; color:#27ae60;"><b>TOTAL GASTO CASETAS: $${datosCierreIaveActual.sumaTotal.toFixed(2)} MXN</b></p>
                 </div>
                 <h3>Desglose de Casetas Cruzadas</h3>
-                <table>
-                    <thead><tr><th>Fecha y Hora</th><th>Plaza de Cobro / Caseta</th><th>Ruta / Destino</th><th>Tipo</th><th>Monto</th></tr></thead>
-                    <tbody>`;
+                <table><thead><tr><th>Fecha y Hora</th><th>Plaza de Cobro / Caseta</th><th>Ruta / Destino</th><th>Monto</th></tr></thead><tbody>`;
             
             datosCierreIaveActual.casetas.forEach(c => {
-                html += `<tr><td>${c.fecha}</td><td>${c.caseta || '-'}</td><td>${c.destino_iave || '-'}</td><td>${c.tipo_iave || 'IDA'}</td><td>$${parseFloat(c.monto).toFixed(2)} MXN</td></tr>`;
+                html += `<tr><td>${c.fecha}</td><td>${c.caseta || '-'}</td><td>${c.destino_iave || '-'}</td><td>$${parseFloat(c.monto).toFixed(2)} MXN</td></tr>`;
             });
             html += `</tbody></table>`;
 
-            contenido.innerHTML = html;
-            areaPDF.style.display = 'block';
-
-            html2pdf().set({ margin: 10, filename: `Cierre_IAVE_${datosCierreIaveActual.op}.pdf`, html2canvas: { scale: 2 } }).from(areaPDF).save().then(() => {
-                areaPDF.style.display = 'none';
-            });
-        }
-
-        // CONSULTA RÁPIDA DE COMBUSTIBLE Y GENERAR PDF
-        function calcularResumenCombustible() {
-            const opBuscar = document.getElementById('cierre_fuel_operador').value.trim().toLowerCase();
-            const fInicio = document.getElementById('cierre_fuel_inicio').value;
-            const fFin = document.getElementById('cierre_fuel_fin').value;
-
-            if (!opBuscar) { alert('⚠️ Ingresa el nombre del Operador de Combustible.'); return; }
-
-            const bd = JSON.parse(localStorage.getItem('bd_transporte') || '[]');
-            const registrosFiltrados = bd.filter(item => {
-                if (item.tipo !== 'combustible') return false;
-                const matchOp = item.operador && item.operador.toLowerCase().includes(opBuscar);
-                const matchInicio = !fInicio || item.fecha >= fInicio;
-                const matchFin = !fFin || item.fecha <= fFin;
-                return matchOp && matchInicio && matchFin;
-            });
-
-            if (registrosFiltrados.length === 0) {
-                alert('ℹ️ No se encontraron registros de combustible para este operador en ese rango de fechas.');
-                document.getElementById('resultado-cierre-fuel').style.display = 'none';
-                return;
-            }
-
-            let totalKm = 0, totalLitros = 0, totalCargados = 0;
-            registrosFiltrados.forEach(r => {
-                totalKm += parseFloat(r.km) || 0;
-                let valorSplit = (r.valor || '').split('L');
-                if(valorSplit.length > 0) totalLitros += parseFloat(valorSplit[0]) || 0;
-                totalCargados += parseFloat(r.l_cargados) || 0;
-            });
-
-            let rendPromedio = totalKm > 0 && totalLitros > 0 ? (totalKm / totalLitros).toFixed(2) : 0;
-
-            datosResumenFuelActual = { op: opBuscar.toUpperCase(), totalKm, totalLitros, totalCargados, rendPromedio, registros: registrosFiltrados, inicio: fInicio, fin: fFin };
-
-            document.getElementById('res_fuel_op').innerText = opBuscar.toUpperCase();
-            document.getElementById('res_fuel_km').innerText = `${totalKm.toFixed(1)} km`;
-            document.getElementById('res_fuel_litros').innerText = `${totalLitros.toFixed(1)} L`;
-            document.getElementById('res_fuel_cargados').innerText = totalCargados.toFixed(1);
-            document.getElementById('res_fuel_rend').innerText = `${rendPromedio} Km/L`;
-            document.getElementById('res_fuel_dias').innerText = registrosFiltrados.length;
-            document.getElementById('resultado-cierre-fuel').style.display = 'block';
+            contenido.innerHTML = html; areaPDF.style.display = 'block';
+            html2pdf().set({ margin: 10, filename: `Cierre_IAVE_${datosCierreIaveActual.op}.pdf`, html2canvas: { scale: 2 } }).from(areaPDF).save().then(() => { areaPDF.style.display = 'none'; });
         }
 
         function generarPDFResumenFuel() {
@@ -530,30 +555,92 @@
             let contenido = document.getElementById('contenido-pdf');
 
             let html = `
-                <h2 style="color:#d35400; text-align:center;">REPORTE Y RESUMEN DE COMBUSTIBLE</h2>
+                <h2 style="color:#d35400; text-align:center;">REPORTE MENSUAL DE COMBUSTIBLE</h2>
                 <div style="background:#fef9e7; padding:10px; border-radius:5px; margin-bottom:15px; font-size:12px;">
                     <p style="margin:3px 0;"><b>Operador:</b> ${datosResumenFuelActual.op}</p>
-                    <p style="margin:3px 0;"><b>Periodo Analizado:</b> ${datosResumenFuelActual.inicio || 'Inicio'} al ${datosResumenFuelActual.fin || 'Fin'}</p>
-                    <p style="margin:3px 0;"><b>Kilómetros Totales Recorridos:</b> ${datosResumenFuelActual.totalKm.toFixed(1)} km</p>
-                    <p style="margin:3px 0;"><b>Litros Consumidos Totales:</b> ${datosResumenFuelActual.totalLitros.toFixed(1)} L (Recargas: ${datosResumenFuelActual.totalCargados.toFixed(1)} L)</p>
+                    <p style="margin:3px 0;"><b>Mes Analizado:</b> ${datosResumenFuelActual.mes || 'General'}</p>
+                    <p style="margin:3px 0;"><b>Kilómetros Totales:</b> ${datosResumenFuelActual.totalKm.toFixed(1)} km</p>
+                    <p style="margin:3px 0;"><b>Litros Consumidos Totales:</b> ${datosResumenFuelActual.totalLitros.toFixed(1)} L</p>
                     <p style="margin:3px 0; font-size:14px; color:#d35400;"><b>RENDIMIENTO PROMEDIO: ${datosResumenFuelActual.rendPromedio} Km/L</b></p>
                 </div>
-                <h3>Detalle Diario de Lecturas de Tanque</h3>
-                <table>
-                    <thead><tr><th>Fecha</th><th>Origen -> Destino</th><th>Km Día</th><th>Consumo / Rendimiento</th></tr></thead>
-                    <tbody>`;
+                <h3>Detalle Diario</h3>
+                <table><thead><tr><th>Fecha</th><th>Origen -> Destino</th><th>Km Día</th><th>Consumo / Rendimiento</th></tr></thead><tbody>`;
             
             datosResumenFuelActual.registros.forEach(r => {
                 html += `<tr><td>${r.fecha}</td><td>${r.origen || 'S/O'} -> ${r.destino || 'S/D'}</td><td>${r.km || 0} km</td><td>${r.valor}</td></tr>`;
             });
             html += `</tbody></table>`;
 
-            contenido.innerHTML = html;
-            areaPDF.style.display = 'block';
+            contenido.innerHTML = html; areaPDF.style.display = 'block';
+            html2pdf().set({ margin: 10, filename: `Resumen_Combustible_${datosResumenFuelActual.op}.pdf`, html2canvas: { scale: 2 } }).from(areaPDF).save().then(() => { areaPDF.style.display = 'none'; });
+        }
 
-            html2pdf().set({ margin: 10, filename: `Resumen_Combustible_${datosResumenFuelActual.op}.pdf`, html2canvas: { scale: 2 } }).from(areaPDF).save().then(() => {
-                areaPDF.style.display = 'none';
+        // FUNCIONES DE REGISTRO Y TABLAS
+        function guardarOperador() {
+            const nombre = document.getElementById('op_nombre').value.trim();
+            const area = document.getElementById('op_area').value;
+            const tag = document.getElementById('op_tag').value.trim();
+
+            if (!nombre) { alert('⚠️ Escribe el nombre del operador.'); return; }
+            let ops = JSON.parse(localStorage.getItem('bd_operadores') || '[]');
+            ops.push({ nombre, area, tag });
+            localStorage.setItem('bd_operadores', JSON.stringify(ops));
+            document.getElementById('op_nombre').value = ''; document.getElementById('op_tag').value = '';
+            cargarTablaOperadores(); actualizarListasOperadores();
+            alert('✅ Operador agregado al catálogo.');
+        }
+
+        function cargarTablaOperadores() {
+            let ops = JSON.parse(localStorage.getItem('bd_operadores') || '[]');
+            let tbody = document.querySelector('#tabla-operadores tbody'); tbody.innerHTML = '';
+            ops.forEach((op, index) => {
+                let tr = document.createElement('tr');
+                tr.innerHTML = `<td><b>${op.nombre}</b></td><td>${op.area}</td><td>${op.tag || '-'}</td><td><button class="btn-action btn-delete" onclick="eliminarOperador(${index})">🗑️</button></td>`;
+                tbody.appendChild(tr);
             });
+        }
+
+        function eliminarOperador(index) {
+            let ops = JSON.parse(localStorage.getItem('bd_operadores') || '[]');
+            ops.splice(index, 1); localStorage.setItem('bd_operadores', JSON.stringify(ops));
+            cargarTablaOperadores(); actualizarListasOperadores();
+        }
+
+        function actualizarListasOperadores() {
+            let ops = JSON.parse(localStorage.getItem('bd_operadores') || '[]');
+            let listComb = document.getElementById('lista-operadores-combustible');
+            let listIave = document.getElementById('lista-operadores-iave');
+            let listTodos = document.getElementById('lista-operadores-todos');
+            listComb.innerHTML = ''; listIave.innerHTML = ''; listTodos.innerHTML = '';
+
+            ops.forEach(op => {
+                let opt = `<option value="${op.nombre}">`; listTodos.innerHTML += opt;
+                if (op.area === 'Combustible' || op.area === 'Ambos') listComb.innerHTML += opt;
+                if (op.area === 'IAVE' || op.area === 'Ambos') listIave.innerHTML += opt;
+            });
+        }
+
+        function autocompletarTagOperador() {
+            const nombreSel = document.getElementById('i_operador').value.trim().toLowerCase();
+            let ops = JSON.parse(localStorage.getItem('bd_operadores') || '[]');
+            let coincidencia = ops.find(o => o.nombre.toLowerCase() === nombreSel);
+            if (coincidencia && coincidencia.tag) document.getElementById('i_tag').value = coincidencia.tag;
+        }
+
+        function calcularNumeroViajeAuto() {
+            const operadorInput = document.getElementById('f_operador').value.trim().toLowerCase();
+            const fechaInput = document.getElementById('f_fecha').value;
+            if (!fechaInput || !operadorInput) { document.getElementById('f_viaje').value = 1; return; }
+
+            const partesFecha = fechaInput.split('-'); const anioSel = partesFecha[0]; const mesSel = partesFecha[1];
+            const bd = JSON.parse(localStorage.getItem('bd_transporte') || '[]');
+            const viajesDelMes = bd.filter(item => item.tipo === 'combustible' && item.operador && item.operador.trim().toLowerCase() === operadorInput && item.fecha.startsWith(`${anioSel}-${mesSel}`));
+            
+            if (viajesDelMes.length === 0) { document.getElementById('f_viaje').value = 1; } 
+            else {
+                const maxViaje = Math.max(...viajesDelMes.map(v => parseInt(v.num_viaje || 0, 10)));
+                document.getElementById('f_viaje').value = maxViaje + 1;
+            }
         }
 
         function calcCombustible() {
@@ -585,15 +672,14 @@
                 data.num_viaje = document.getElementById('f_viaje').value;
                 data.detalles = `L.Diaria: ${document.getElementById('f_origen').value || 'S/O'} -> ${document.getElementById('f_destino').value || 'S/D'} (${document.getElementById('f_km').value || 0} km)`;
                 data.valor = `${document.getElementById('t_consumido').value} L | Rend: ${document.getElementById('t_rendimiento').value} Km/L`;
-                data.monto = 0;
-                data.rend = parseFloat(document.getElementById('t_rendimiento').value) || 0;
+                data.monto = 0; data.rend = parseFloat(document.getElementById('t_rendimiento').value) || 0;
                 data.origen = document.getElementById('f_origen').value; data.destino = document.getElementById('f_destino').value;
                 data.km = document.getElementById('f_km').value; data.t1_i = document.getElementById('t1_i').value;
                 data.t2_i = document.getElementById('t2_i').value; data.l_cargados = document.getElementById('l_cargados').value;
                 data.t1_f = document.getElementById('t1_f').value; data.t2_f = document.getElementById('t2_f').value;
 
-                if (editIndex >= 0) { bd[editIndex] = data; document.getElementById('edit_index_combustible').value = -1; alert('✅ Registro actualizado.'); } 
-                else { bd.push(data); alert('✅ Registro guardado.'); }
+                if (editIndex >= 0) { bd[editIndex] = data; document.getElementById('edit_index_combustible').value = -1; alert('✅ Actualizado.'); } 
+                else { bd.push(data); alert('✅ Guardado.'); }
 
             } else {
                 let editIndex = parseInt(document.getElementById('edit_index_iave').value, 10);
@@ -609,8 +695,8 @@
                 data.tipo_iave = document.getElementById('i_tipo').value; data.caseta = document.getElementById('i_caseta').value;
                 data.importe = document.getElementById('i_importe').value;
 
-                if (editIndex >= 0) { bd[editIndex] = data; document.getElementById('edit_index_iave').value = -1; alert('✅ Caseta actualizada.'); } 
-                else { bd.push(data); alert('✅ Caseta guardada.'); }
+                if (editIndex >= 0) { bd[editIndex] = data; document.getElementById('edit_index_iave').value = -1; alert('✅ Actualizado.'); } 
+                else { bd.push(data); alert('✅ Guardado.'); }
             }
 
             localStorage.setItem('bd_transporte', JSON.stringify(bd));
@@ -643,8 +729,7 @@
         function eliminarRegistro(index) {
             if (confirm('⚠️ ¿Deseas borrar este registro?')) {
                 let bd = JSON.parse(localStorage.getItem('bd_transporte') || '[]');
-                bd.splice(index, 1);
-                localStorage.setItem('bd_transporte', JSON.stringify(bd));
+                bd.splice(index, 1); localStorage.setItem('bd_transporte', JSON.stringify(bd));
                 cargarHistorial();
             }
         }
@@ -653,7 +738,6 @@
             let bd = JSON.parse(localStorage.getItem('bd_transporte') || '[]');
             let gInicio = document.getElementById('graf_inicio').value;
             let gFin = document.getElementById('graf_fin').value;
-
             let opPeajes = {}, opRend = {};
 
             bd.forEach(item => {
@@ -662,11 +746,8 @@
                 let matchFin = !gFin || item.fecha <= gFin;
 
                 if (matchInicio && matchFin) {
-                    if(item.tipo === 'iave') {
-                        opPeajes[op] = (opPeajes[op] || 0) + item.monto;
-                    } else if(item.tipo === 'combustible' && item.rend > 0) {
-                        opRend[op] = item.rend;
-                    }
+                    if(item.tipo === 'iave') opPeajes[op] = (opPeajes[op] || 0) + item.monto;
+                    else if(item.tipo === 'combustible' && item.rend > 0) opRend[op] = item.rend;
                 }
             });
 
@@ -695,7 +776,6 @@
         function descargarPDFDirecto() {
             let bd = JSON.parse(localStorage.getItem('bd_transporte') || '[]');
             if(bd.length === 0) { alert('⚠️ No hay registros.'); return; }
-
             let areaPDF = document.getElementById('reporte-pdf-area');
             let contenido = document.getElementById('contenido-pdf');
             
@@ -705,19 +785,14 @@
             });
             html += `</tbody></table>`;
             
-            contenido.innerHTML = html;
-            areaPDF.style.display = 'block';
-
-            html2pdf().set({ margin: 10, filename: 'Reporte_General_Flotas.pdf', html2canvas: { scale: 2 } }).from(areaPDF).save().then(() => {
-                areaPDF.style.display = 'none';
-            });
+            contenido.innerHTML = html; areaPDF.style.display = 'block';
+            html2pdf().set({ margin: 10, filename: 'Reporte_General_Flotas.pdf', html2canvas: { scale: 2 } }).from(areaPDF).save().then(() => { areaPDF.style.display = 'none'; });
         }
 
         function cargarHistorial() { renderTabla(JSON.parse(localStorage.getItem('bd_transporte') || '[]')); }
         
         function renderTabla(datos) {
-            let tbody = document.querySelector('#tabla-historial tbody');
-            tbody.innerHTML = '';
+            let tbody = document.querySelector('#tabla-historial tbody'); tbody.innerHTML = '';
             datos.forEach((d, index) => {
                 let tr = document.createElement('tr');
                 tr.innerHTML = `
@@ -752,9 +827,7 @@
         }
 
         if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('/sw.js');
-            });
+            window.addEventListener('load', () => { navigator.serviceWorker.register('/sw.js'); });
         }
     </script>
 </body>

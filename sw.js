@@ -1,4 +1,4 @@
-const CACHE_NAME = 'transporte-v7';
+const CACHE_NAME = 'transporte-v8';
 const urlsToCache = [
   './',
   './index.html',
@@ -9,7 +9,6 @@ const urlsToCache = [
 self.addEventListener('install', event => {
   event.waitUntil(
     caches.open(CACHE_NAME).then(cache => {
-      // Usamos addAll solo con los archivos locales seguros
       return cache.addAll(urlsToCache);
     }).then(() => self.skipWaiting())
   );
@@ -30,15 +29,13 @@ self.addEventListener('activate', event => {
   );
 });
 
-// Interceptación de peticiones para funcionamiento offline y con CDNs externos
+// Interceptación de peticiones para funcionamiento offline
 self.addEventListener('fetch', event => {
   event.respondWith(
     caches.match(event.request).then(response => {
-      // Si está en caché, lo devuelve; si no, lo busca en la red y opcionalmente lo cachea
       return response || fetch(event.request).then(fetchResponse => {
         return fetchResponse;
       }).catch(() => {
-        // Fallback en caso de que no haya red ni caché
         if (event.request.mode === 'navigate') {
           return caches.match('./index.html');
         }
