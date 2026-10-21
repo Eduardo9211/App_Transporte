@@ -52,7 +52,7 @@
 
     <div class="tabs">
         <button class="tab-btn active" onclick="cambiarPestaña(event, 'tab-combustible')">⛽ Combustible</button>
-        <button class="tab-btn" onclick="cambiarPestaña(event, 'tab-iave')">💳 Casetas</button>
+        <button class="tab-btn" onclick="cambiarPestaña(event, 'tab-iave')">💳 Casetas e IAVE</button>
         <button class="tab-btn" onclick="cambiarPestaña(event, 'tab-operadores')">👥 Operadores</button>
         <button class="tab-btn" onclick="cambiarPestaña(event, 'tab-comparativa')">📈 Gráficas</button>
         <button class="tab-btn" onclick="cambiarPestaña(event, 'tab-historial')">📊 Generar PDF</button>
@@ -145,12 +145,31 @@
         </div>
     </div>
 
-    <!-- PESTAÑA 2: CASETAS E IAVE, ESTIMADOR Y CIERRE MENSUAL -->
+    <!-- PESTAÑA 2: CASETAS E IAVE, RECARGAS Y ESTIMADOR -->
     <div id="tab-iave" class="tab-content">
+        <!-- FORMULARIO NUEVO: RECARGA DE SALDO AL TAG IAVE -->
+        <div class="card" style="background: #e8f8f5; border: 1px solid #a3e4d7;">
+            <h2>💳 Recargar Saldo a TAG IAVE</h2>
+            <p style="font-size: 11px; color: #555; margin-top: -8px;">Registra los abonos o recargas de saldo para auditar el presupuesto disponible.</p>
+            <form id="recargaForm">
+                <div class="grid">
+                    <div>
+                        <label>Operador IAVE</label>
+                        <input type="text" id="rec_operador" list="lista-operadores-iave" placeholder="Escribe o selecciona..." onchange="autocompletarTagRecarga()">
+                    </div>
+                    <div><label>TAG IAVE</label><input type="text" id="rec_tag" placeholder="CPFI11489490"></div>
+                    <div><label>Fecha y Hora Recarga</label><input type="datetime-local" id="rec_fechahora"></div>
+                    <div><label>Monto Recargado ($ MXN)</label><input type="number" step="0.1" id="rec_monto" placeholder="Ej. 1500"></div>
+                    <div><label>Folio / Obs. (Opcional)</label><input type="text" id="rec_folio" placeholder="Ej. Transf. 84920"></div>
+                </div>
+                <button type="button" style="background: #16a085;" onclick="guardarRecargaTAG()">💵 Registrar Recarga al TAG</button>
+            </form>
+        </div>
+
         <!-- ESTIMADOR DE RUTA CASETAS BASADO EN HISTORIAL -->
         <div class="card" style="background: #eaf2f8; border: 1px solid #aed6f1;">
             <h2>🔮 Cotizador Pré-Ruta: Presupuesto de Casetas IAVE</h2>
-            <p style="font-size: 11px; color: #555; margin-top: -8px;">Suma el gasto promedio y tiempo estimado entre casetas de una ruta previa (ej. Tepotzotlán a Chapala / Guadalajara).</p>
+            <p style="font-size: 11px; color: #555; margin-top: -8px;">Suma el gasto promedio y tiempo estimado entre casetas de una ruta previa.</p>
             <div class="grid">
                 <div>
                     <label>Operador (Opcional)</label>
@@ -171,7 +190,7 @@
 
         <!-- CALCULADORA / CERRAR CUENTA DE VIAJE O MES -->
         <div class="card" style="background: #ffffff; border: 1px solid #ddd;">
-            <h2>🧮 Cierre Mensual / Periodo Casetas IAVE</h2>
+            <h2>🧮 Cierre Mensual / Auditoría de Cuenta IAVE</h2>
             <div class="grid">
                 <div>
                     <label>Operador IAVE</label>
@@ -180,13 +199,15 @@
                 <div><label>Fecha/Hora Inicio Viaje</label><input type="datetime-local" id="cierre_inicio"></div>
                 <div><label>Fecha/Hora Fin Viaje</label><input type="datetime-local" id="cierre_fin"></div>
             </div>
-            <button type="button" style="background: #1e3c72;" onclick="calcularCierreCuentaIave()">💰 Sacar Cuenta y Tiempo Total</button>
+            <button type="button" style="background: #1e3c72;" onclick="calcularCierreCuentaIave()">💰 Sacar Cuenta, Recargas y Tiempo</button>
 
             <div id="resultado-cierre" class="resumen-iave" style="display: none;">
                 <h4>Resumen de Cuenta de Viaje:</h4>
                 <p style="margin: 3px 0;"><strong>Operador:</strong> <span id="res_op">-</span></p>
-                <p style="margin: 3px 0;"><strong>Gasto Total Casetas:</strong> <span id="res_monto" style="font-size: 18px; color: #27ae60; font-weight: bold;">$0.00 MXN</span></p>
-                <p style="margin: 3px 0;"><strong>Tiempo de Traslado (Primer a Última Caseta):</strong> <span id="res_tiempo" style="font-weight: bold; color: #d35400;">0 hrs</span></p>
+                <p style="margin: 3px 0;"><strong>Total Recargado al TAG:</strong> <span id="res_recargas" style="font-size: 16px; color: #16a085; font-weight: bold;">$0.00 MXN</span></p>
+                <p style="margin: 3px 0;"><strong>Gasto Total en Casetas:</strong> <span id="res_monto" style="font-size: 16px; color: #c0392b; font-weight: bold;">$0.00 MXN</span></p>
+                <p style="margin: 3px 0;"><strong>Diferencia / Balance:</strong> <span id="res_balance" style="font-size: 18px; font-weight: bold;">$0.00 MXN</span></p>
+                <p style="margin: 3px 0;"><strong>Tiempo de Traslado:</strong> <span id="res_tiempo" style="font-weight: bold; color: #d35400;">0 hrs</span></p>
                 <p style="margin: 3px 0;"><strong>Casetas Registradas:</strong> <span id="res_pasos">0</span> casetas</p>
                 <button type="button" style="background: #27ae60; margin-top: 10px;" onclick="generarPDFCierreIave()">📄 Descargar PDF Cierre IAVE para el Jefe</button>
             </div>
@@ -250,7 +271,7 @@
         </div>
     </div>
 
-    <!-- PESTAÑA 4: GRÁFICAS SEPARADAS CON FILTRO DE FECHAS Y PDF -->
+    <!-- PESTAÑA 4: GRÁFICAS SEPARADAS -->
     <div id="tab-comparativa" class="tab-content">
         <div class="card">
             <h2>Análisis de Flotas (Gráficas Independientes)</h2>
@@ -316,7 +337,7 @@
     <!-- PLANTILLA OCULTA GENERAL DE PDF -->
     <div id="reporte-pdf-area">
         <h1 style="color: #1e3c72; font-size: 18px; text-align: center;">REPORTE EJECUTIVO DE CONTROL DE FLOTAS</h1>
-        <p style="font-size: 10px; text-align: center; color: #555;">Auditoría de Casetas e Inspección de Combustible</p>
+        <p style="font-size: 10px; text-align: center; color: #555;">Auditoría de Casetas, Recargas e Inspección de Combustible</p>
         <hr>
         <div id="contenido-pdf"></div>
     </div>
@@ -346,7 +367,49 @@
             if(idTab === 'tab-operadores') cargarTablaOperadores();
         }
 
-        // ESTIMADOR DE RUTA FUTURA DE COMBUSTIBLE
+        // REGISTRAR RECARGA AL TAG IAVE
+        function guardarRecargaTAG() {
+            const op = document.getElementById('rec_operador').value.trim();
+            const tag = document.getElementById('rec_tag').value.trim();
+            const fechahora = document.getElementById('rec_fechahora').value;
+            const monto = parseFloat(document.getElementById('rec_monto').value) || 0;
+            const folio = document.getElementById('rec_folio').value.trim();
+
+            if (!op || !fechahora || monto <= 0) {
+                alert('⚠️ Ingresa el Operador, la Fecha/Hora y un Monto de recarga válido.');
+                return;
+            }
+
+            let bd = JSON.parse(localStorage.getItem('bd_transporte') || '[]');
+            let data = {
+                tipo: 'recarga_tag',
+                fecha: fechahora,
+                operador: op,
+                num_viaje: '-',
+                detalles: `💵 RECARGA TAG ${tag ? '(' + tag + ')' : ''} ${folio ? '- Ref: ' + folio : ''}`,
+                valor: `+$${monto.toFixed(2)} MXN`,
+                monto: monto,
+                rend: 0,
+                tag: tag,
+                timestamp: new Date().toISOString()
+            };
+
+            bd.push(data);
+            localStorage.setItem('bd_transporte', JSON.stringify(bd));
+
+            document.getElementById('rec_monto').value = '';
+            document.getElementById('rec_folio').value = '';
+            alert('✅ Recarga de TAG registrada correctamente.');
+        }
+
+        function autocompletarTagRecarga() {
+            const nombreSel = document.getElementById('rec_operador').value.trim().toLowerCase();
+            let ops = JSON.parse(localStorage.getItem('bd_operadores') || '[]');
+            let coincidencia = ops.find(o => o.nombre.toLowerCase() === nombreSel);
+            if (coincidencia && coincidencia.tag) document.getElementById('rec_tag').value = coincidencia.tag;
+        }
+
+        // ESTIMADORES DE RUTA
         function estimarRutaCombustible() {
             const op = document.getElementById('est_fuel_op').value.trim().toLowerCase();
             const origen = document.getElementById('est_fuel_origen').value.trim().toLowerCase();
@@ -367,7 +430,7 @@
             });
 
             if (viajesCoincidentes.length === 0) {
-                alert('ℹ️ No hay registros previos en el historial que coincidan con esa ruta o filtro.');
+                alert('ℹ️ No hay registros previos en el historial para esa ruta.');
                 document.getElementById('resultado-estimador-fuel').style.display = 'none';
                 return;
             }
@@ -393,7 +456,6 @@
             document.getElementById('resultado-estimador-fuel').style.display = 'block';
         }
 
-        // ESTIMADOR DE RUTA FUTURA DE CASETAS IAVE
         function estimarRutaIave() {
             const op = document.getElementById('est_iave_op').value.trim().toLowerCase();
             const destino = document.getElementById('est_iave_destino').value.trim().toLowerCase();
@@ -437,7 +499,7 @@
             document.getElementById('resultado-estimador-iave').style.display = 'block';
         }
 
-        // CIERRE MENSUAL DE COMBUSTIBLE
+        // CIERRES MENSUALES Y AUDITORÍA
         function calcularCierreMensualCombustible() {
             const opBuscar = document.getElementById('cierre_fuel_operador').value.trim().toLowerCase();
             const mesSel = document.getElementById('cierre_fuel_mes').value;
@@ -478,7 +540,6 @@
             document.getElementById('resultado-cierre-fuel').style.display = 'block';
         }
 
-        // CIERRE CUENTA O PERIODO IAVE
         function calcularCierreCuentaIave() {
             const opBuscar = document.getElementById('cierre_operador').value.trim().toLowerCase();
             const fInicio = document.getElementById('cierre_inicio').value;
@@ -487,6 +548,8 @@
             if (!opBuscar) { alert('⚠️ Ingresa el nombre del Operador IAVE.'); return; }
 
             const bd = JSON.parse(localStorage.getItem('bd_transporte') || '[]');
+            
+            // Casetas
             const casetasFiltradas = bd.filter(item => {
                 if (item.tipo !== 'iave') return false;
                 const matchOp = item.operador && item.operador.toLowerCase().includes(opBuscar);
@@ -495,14 +558,25 @@
                 return matchOp && matchInicio && matchFin;
             });
 
-            if (casetasFiltradas.length === 0) {
-                alert('ℹ️ No se encontraron casetas para este operador.');
+            // Recargas al TAG
+            const recargasFiltradas = bd.filter(item => {
+                if (item.tipo !== 'recarga_tag') return false;
+                const matchOp = item.operador && item.operador.toLowerCase().includes(opBuscar);
+                const matchInicio = !fInicio || item.fecha >= fInicio;
+                const matchFin = !fFin || item.fecha <= fFin;
+                return matchOp && matchInicio && matchFin;
+            });
+
+            if (casetasFiltradas.length === 0 && recargasFiltradas.length === 0) {
+                alert('ℹ️ No se encontraron casetas ni recargas para este operador.');
                 document.getElementById('resultado-cierre').style.display = 'none';
                 return;
             }
 
             casetasFiltradas.sort((a, b) => new Date(a.fecha) - new Date(b.fecha));
-            const sumaTotal = casetasFiltradas.reduce((acc, curr) => acc + (parseFloat(curr.monto) || 0), 0);
+            const sumaGastoCasetas = casetasFiltradas.reduce((acc, curr) => acc + (parseFloat(curr.monto) || 0), 0);
+            const sumaTotalRecargas = recargasFiltradas.reduce((acc, curr) => acc + (parseFloat(curr.monto) || 0), 0);
+            const balanceNeto = sumaTotalRecargas - sumaGastoCasetas;
 
             let tiempoTexto = "1 sola caseta";
             if (casetasFiltradas.length >= 2) {
@@ -515,10 +589,26 @@
                 }
             }
 
-            datosCierreIaveActual = { op: opBuscar.toUpperCase(), sumaTotal, tiempoTexto, casetas: casetasFiltradas, inicio: fInicio, fin: fFin };
+            datosCierreIaveActual = { 
+                op: opBuscar.toUpperCase(), 
+                sumaGastoCasetas, 
+                sumaTotalRecargas,
+                balanceNeto,
+                tiempoTexto, 
+                casetas: casetasFiltradas, 
+                recargas: recargasFiltradas,
+                inicio: fInicio, 
+                fin: fFin 
+            };
 
             document.getElementById('res_op').innerText = opBuscar.toUpperCase();
-            document.getElementById('res_monto').innerText = `$${sumaTotal.toFixed(2)} MXN`;
+            document.getElementById('res_recargas').innerText = `$${sumaTotalRecargas.toFixed(2)} MXN`;
+            document.getElementById('res_monto').innerText = `$${sumaGastoCasetas.toFixed(2)} MXN`;
+            
+            let elBalance = document.getElementById('res_balance');
+            elBalance.innerText = `$${balanceNeto.toFixed(2)} MXN`;
+            elBalance.style.color = balanceNeto >= 0 ? '#27ae60' : '#e74c3c';
+
             document.getElementById('res_tiempo').innerText = tiempoTexto;
             document.getElementById('res_pasos').innerText = casetasFiltradas.length;
             document.getElementById('resultado-cierre').style.display = 'block';
@@ -531,22 +621,33 @@
             let contenido = document.getElementById('contenido-pdf');
 
             let html = `
-                <h2 style="color:#1e3c72; text-align:center;">LIQUIDACIÓN Y CIERRE DE CUENTA CASETAS IAVE</h2>
+                <h2 style="color:#1e3c72; text-align:center;">ESTADO DE CUENTA Y AUDITORÍA DE TAG IAVE</h2>
                 <div style="background:#eef2f7; padding:10px; border-radius:5px; margin-bottom:15px; font-size:12px;">
                     <p style="margin:3px 0;"><b>Operador:</b> ${datosCierreIaveActual.op}</p>
-                    <p style="margin:3px 0;"><b>Tiempo Transcurrido:</b> ${datosCierreIaveActual.tiempoTexto}</p>
-                    <p style="margin:3px 0; font-size:14px; color:#27ae60;"><b>TOTAL GASTO CASETAS: $${datosCierreIaveActual.sumaTotal.toFixed(2)} MXN</b></p>
+                    <p style="margin:3px 0;"><b>Tiempo de Recorrido:</b> ${datosCierreIaveActual.tiempoTexto}</p>
+                    <p style="margin:3px 0; color:#16a085;"><b>(+) TOTAL RECARGAS AL TAG: $${datosCierreIaveActual.sumaTotalRecargas.toFixed(2)} MXN</b></p>
+                    <p style="margin:3px 0; color:#c0392b;"><b>(-) TOTAL PEAJES CASETAS: $${datosCierreIaveActual.sumaGastoCasetas.toFixed(2)} MXN</b></p>
+                    <hr>
+                    <p style="margin:3px 0; font-size:14px; color:${datosCierreIaveActual.balanceNeto >= 0 ? '#27ae60' : '#e74c3c'};"><b>SALDO DISPONIBLE / BALANCE NETO: $${datosCierreIaveActual.balanceNeto.toFixed(2)} MXN</b></p>
                 </div>
-                <h3>Desglose de Casetas Cruzadas</h3>
-                <table><thead><tr><th>Fecha y Hora</th><th>Plaza de Cobro / Caseta</th><th>Ruta / Destino</th><th>Monto</th></tr></thead><tbody>`;
+                <h3>Casetas Cruzadas</h3>
+                <table><thead><tr><th>Fecha y Hora</th><th>Caseta</th><th>Ruta</th><th>Monto</th></tr></thead><tbody>`;
             
             datosCierreIaveActual.casetas.forEach(c => {
                 html += `<tr><td>${c.fecha}</td><td>${c.caseta || '-'}</td><td>${c.destino_iave || '-'}</td><td>$${parseFloat(c.monto).toFixed(2)} MXN</td></tr>`;
             });
             html += `</tbody></table>`;
 
+            if(datosCierreIaveActual.recargas.length > 0) {
+                html += `<h3>Abonos y Recargas Realizadas</h3><table><thead><tr><th>Fecha y Hora</th><th>TAG</th><th>Monto Recargado</th><th>Ref. / Folio</th></tr></thead><tbody>`;
+                datosCierreIaveActual.recargas.forEach(r => {
+                    html += `<tr><td>${r.fecha}</td><td>${r.tag || '-'}</td><td>+$${parseFloat(r.monto).toFixed(2)} MXN</td><td>${r.detalles}</td></tr>`;
+                });
+                html += `</tbody></table>`;
+            }
+
             contenido.innerHTML = html; areaPDF.style.display = 'block';
-            html2pdf().set({ margin: 10, filename: `Cierre_IAVE_${datosCierreIaveActual.op}.pdf`, html2canvas: { scale: 2 } }).from(areaPDF).save().then(() => { areaPDF.style.display = 'none'; });
+            html2pdf().set({ margin: 10, filename: `Auditoria_TAG_${datosCierreIaveActual.op}.pdf`, html2canvas: { scale: 2 } }).from(areaPDF).save().then(() => { areaPDF.style.display = 'none'; });
         }
 
         function generarPDFResumenFuel() {
@@ -575,7 +676,7 @@
             html2pdf().set({ margin: 10, filename: `Resumen_Combustible_${datosResumenFuelActual.op}.pdf`, html2canvas: { scale: 2 } }).from(areaPDF).save().then(() => { areaPDF.style.display = 'none'; });
         }
 
-        // FUNCIONES DE REGISTRO Y TABLAS
+        // REGISTROS DE CATÁLOGOS Y TABLAS
         function guardarOperador() {
             const nombre = document.getElementById('op_nombre').value.trim();
             const area = document.getElementById('op_area').value;
