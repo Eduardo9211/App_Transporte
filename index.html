@@ -218,7 +218,7 @@
     <div id="tab-excel" class="tab-content">
         <div class="card" style="background: #eef9f1; border: 1px solid #c8e6c9;">
             <h2>📁 Carga Masiva desde Excel / CSV</h2>
-            <p style="font-size: 11px; color: #555;">Puedes subir fechas en formato <b>DD/MM/YYYY</b> o <b>YYYY-MM-DD</b> sin problema.</p>
+            <p style="font-size: 11px; color: #555;">Soporta celdas con formato de fecha o número general automáticamente.</p>
             
             <button type="button" style="background: #27ae60;" onclick="descargarPlantillaExcel()">📥 1. Descargar Plantilla de Excel</button>
             
@@ -332,14 +332,28 @@
             if(idTab === 'tab-operadores') cargarTablaOperadores();
         }
 
-        // FUNCIÓN INTELIGENTE PARA CONVERTIR FECHAS DE EXCEL (DD/MM/YYYY a YYYY-MM-DD)
-        function normalizarFecha(fechaStr) {
-            if (!fechaStr) return new Date().toISOString().split('T')[0];
-            let f = fechaStr.toString().trim();
-            // Si viene en formato DD/MM/YYYY o DD-MM-YYYY
+        // CONVERTIDOR COMPLETO DE NÚMEROS DE SERIE DE EXCEL Y TEXTO A FECHA AAAA-MM-DD
+        function normalizarFecha(val) {
+            if (!val) return new Date().toISOString().split('T')[0];
+            
+            // 1. Si es un número entero/decimal de serie de Excel (ej: 45390 ó 45390.35)
+            if (typeof val === 'number' || (!isNaN(val) && !val.toString().includes('-') && !val.toString().includes('/'))) {
+                let numPuro = parseFloat(val);
+                // Convertir fecha de Excel (base 1/1/1900) a milisegundos JS
+                let fechaJS = new Date(Math.round((numPuro - 25569) * 86400 * 1000));
+                if (!isNaN(fechaJS.getTime())) {
+                    let yyyy = fechaJS.getUTCFullYear();
+                    let mm = String(fechaJS.getUTCMonth() + 1).padStart(2, '0');
+                    let dd = String(fechaJS.getUTCDate()).padStart(2, '0');
+                    return `${yyyy}-${mm}-${dd}`;
+                }
+            }
+
+            // 2. Si viene como texto DD/MM/YYYY o DD-MM-YYYY
+            let f = val.toString().trim();
             if (f.includes('/') || (f.includes('-') && f.split('-')[0].length <= 2)) {
-                let separador = f.includes('/') ? '/' : '-';
-                let partes = f.split(' ')[0].split(separador);
+                let sep = f.includes('/') ? '/' : '-';
+                let partes = f.split(' ')[0].split(sep);
                 if (partes.length === 3) {
                     let dia = partes[0].padStart(2, '0');
                     let mes = partes[1].padStart(2, '0');
@@ -349,10 +363,10 @@
                     return `${anio}-${mes}-${dia}${hora}`;
                 }
             }
+
             return f;
         }
 
-        // CARGA MASIVA EXCEL CON CONVERSOR DE FECHA
         function descargarPlantillaExcel() {
             const datosPlantilla = [
                 { Tipo: "iave", FechaHora: "10/04/2026 08:30", Operador: "Alvaro", Tag: "CPFI11489490", CasetaRuta: "Tepotzotlan", TipoViaje: "IDA", MontoLitros: 120, Origen: "", Destino: "Chapala", Km: 0 },
@@ -381,7 +395,7 @@
                 try {
                     const data = new Uint8Array(e.target.result);
                     const workbook = XLSX.read(data, { type: 'array' });
-                    const rows = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]]);
+                    const rows = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], { raw: true });
 
                     if (rows.length === 0) { alert('⚠️ El Excel está vacío.'); return; }
 
@@ -426,7 +440,7 @@
 
                     localStorage.setItem('bd_transporte', JSON.stringify(bd));
                     statusDiv.style.color = '#27ae60';
-                    statusDiv.innerText = `✅ ¡Éxito! Se importaron ${importados} registros desde Excel.`;
+                    statusDiv.innerText = `✅ ¡Éxito! Se importaron ${importados} registros convertidos a fecha.`;
                     alert(`✅ ¡Carga Masiva Exitosa! Se agregaron ${importados} registros.`);
                     fileInput.value = '';
                 } catch (err) {
@@ -437,7 +451,6 @@
             reader.readAsArrayBuffer(file);
         }
 
-        // OTRAS FUNCIONES OPERATIVAS Y DE CIERRE
         function guardarRecargaTAG() {
             const op = document.getElementById('rec_operador').value.trim();
             const tag = document.getElementById('rec_tag').value.trim();

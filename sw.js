@@ -1,4 +1,4 @@
-const CACHE_NAME = 'transporte-v11';
+const CACHE_NAME = 'transporte-v12';
 const urlsToCache = [
   './',
   './index.html',
