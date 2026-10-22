@@ -6,7 +6,6 @@
     <title>Control de Transporte y Flotas</title>
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#1e3c72">
-    <!-- Librerías para Gráficas, PDF Automático y Lectura de Excel -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
@@ -244,7 +243,7 @@
         </div>
     </div>
 
-    <!-- PESTAÑA 5: HISTORIAL Y PDF (CON SELECCIONADOR MÚLTIPLE) -->
+    <!-- PESTAÑA 5: HISTORIAL Y PDF -->
     <div id="tab-historial" class="tab-content">
         <div class="card">
             <h2>📊 Historial y Borrado Masivo</h2>
@@ -309,10 +308,8 @@
             if(idTab === 'tab-operadores') cargarTablaOperadores();
         }
 
-        // CONVERTIDOR CORREGIDO DE FECHAS DE EXCEL
         function normalizarFecha(val) {
             if (!val) return new Date().toISOString().split('T')[0];
-            
             if (typeof val === 'number' || (!isNaN(val) && !val.toString().includes('-') && !val.toString().includes('/'))) {
                 let numPuro = parseFloat(val);
                 let fechaJS = new Date(Math.round((numPuro - 25569) * 86400 * 1000));
@@ -322,14 +319,10 @@
                     let dd = String(fechaJS.getUTCDate()).padStart(2, '0');
                     let hh = String(fechaJS.getUTCHours()).padStart(2, '0');
                     let min = String(fechaJS.getUTCMinutes()).padStart(2, '0');
-                    // Si trae hora decimal relevante
-                    if (numPuro % 1 !== 0) {
-                        return `${yyyy}-${mm}-${dd} ${hh}:${min}`;
-                    }
+                    if (numPuro % 1 !== 0) return `${yyyy}-${mm}-${dd} ${hh}:${min}`;
                     return `${yyyy}-${mm}-${dd}`;
                 }
             }
-
             let f = val.toString().trim();
             if (f.includes('/') || (f.includes('-') && f.split('-')[0].length <= 2)) {
                 let sep = f.includes('/') ? '/' : '-';
@@ -383,6 +376,19 @@
 
                     rows.forEach(r => {
                         let tipoRaw = (r.Tipo || '').toString().toLowerCase().trim();
+                        let casetaRuta = (r.CasetaRuta || '').toString().toLowerCase();
+                        
+                        // Detección automática si Tipo viene vacío en Excel
+                        if (!tipoRaw) {
+                            if (casetaRuta.includes('abono') || casetaRuta.includes('recarga')) {
+                                tipoRaw = 'recarga_tag';
+                            } else if (r.Km && parseFloat(r.Km) > 0) {
+                                tipoRaw = 'combustible';
+                            } else {
+                                tipoRaw = 'iave';
+                            }
+                        }
+
                         let fecha = normalizarFecha(r.FechaHora);
                         let op = r.Operador || 'Sin Nombre';
                         let montoLitros = parseFloat(r.MontoLitros) || 0;
@@ -419,8 +425,8 @@
 
                     localStorage.setItem('bd_transporte', JSON.stringify(bd));
                     statusDiv.style.color = '#27ae60';
-                    statusDiv.innerText = `✅ ¡Éxito! Se importaron ${importados} registros correctamente.`;
-                    alert(`✅ ¡Carga Masiva Exitosa! Se agregaron ${importados} registros.`);
+                    statusDiv.innerText = `✅ ¡Éxito! Se importaron ${importados} registros (Gallo, Rubén, Álvaro).`;
+                    alert(`✅ ¡Carga Masiva Exitosa! Se agregaron los ${importados} registros de todos los operadores.`);
                     fileInput.value = '';
                 } catch (err) {
                     console.error(err);
@@ -612,7 +618,6 @@
             localStorage.setItem('bd_transporte', JSON.stringify(bd));
         }
 
-        // FUNCIONES DE SELECCIÓN MÚLTIPLE PARA EL HISTORIAL
         function seleccionarTodos(source) {
             let checkboxes = document.querySelectorAll('.chk-item');
             checkboxes.forEach(cb => cb.checked = source.checked);
@@ -628,8 +633,6 @@
             if (confirm(`⚠️ ¿Deseas eliminar los ${checkboxes.length} registros seleccionados?`)) {
                 let indicesAEliminar = Array.from(checkboxes).map(cb => parseInt(cb.getAttribute('data-index'), 10));
                 let bd = JSON.parse(localStorage.getItem('bd_transporte') || '[]');
-                
-                // Ordenar índices de mayor a menor para que al borrar no se corran los demás índices
                 indicesAEliminar.sort((a, b) => b - a);
                 indicesAEliminar.forEach(idx => bd.splice(idx, 1));
 
