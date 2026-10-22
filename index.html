@@ -135,38 +135,52 @@
             </form>
         </div>
 
-        <!-- COTIZADOR Y RANKING DE OPERADORES QUE MÁS GASTAN -->
+        <!-- COTIZADOR Y SUMA POR TRAYECTO (IDA Y VUELTA) + RANKING -->
         <div class="card" style="background: #eaf2f8; border: 1px solid #aed6f1;">
-            <h2>🔮 Cotizador y Comparativa de Gastos por Operador</h2>
+            <h2>🔮 Cotizador y Suma por Trayecto (Ida y Vuelta)</h2>
             <div class="grid">
-                <div><label>Buscar Caseta o Ruta</label><input type="text" id="est_iave_destino" placeholder="Ej. Jorobas, Tepotzotlán, Palmillas..."></div>
-                <div><label>Filtrar por Operador</label><input type="text" id="est_iave_op" list="lista-operadores-iave" placeholder="Dejar vacío para comparar TODOS"></div>
+                <div><label>Buscar Destino / Ruta (Ej. Chapala, León)</label><input type="text" id="est_iave_destino" placeholder="Chapala, León..."></div>
+                <div><label>Filtrar Operador (Opcional)</label><input type="text" id="est_iave_op" list="lista-operadores-iave" placeholder="Dejar vacío para TODOS"></div>
                 <div><label>Mes (Opcional)</label><input type="month" id="est_iave_mes"></div>
             </div>
-            <button type="button" style="background: #27ae60;" onclick="estimarRutaIave()">💰 Consultar / Rankear Operadores</button>
+            <button type="button" style="background: #27ae60;" onclick="estimarRutaIave()">💰 Calcular Trayectos y Ranking</button>
             
             <div id="resultado-estimador-iave" class="resumen-iave" style="display: none;">
-                <h4>Búsqueda: <span id="res_est_iave_destino">-</span></h4>
-                <p style="margin: 3px 0;"><strong>Último Precio Registrado:</strong> <span id="res_est_iave_ultimo_precio" style="color: #27ae60; font-weight: bold; font-size: 16px;">$0.00 MXN</span></p>
-                <p style="margin: 3px 0;"><strong>Gasto Acumulado Total:</strong> <span id="res_est_iave_monto" style="font-weight: bold;">$0.00 MXN</span></p>
+                <h4>Ruta / Destino: <span id="res_est_iave_destino">-</span></h4>
+                <p style="margin: 3px 0;"><strong>Gasto Acumulado en Trayectos:</strong> <span id="res_est_iave_monto" style="font-weight: bold; color: #27ae60; font-size: 16px;">$0.00 MXN</span></p>
                 
                 <hr style="border: 0; border-top: 1px solid #ccc; margin: 10px 0;">
-                <h4 style="margin: 5px 0; color: #1e3c72;">🏆 Ranking: Operadores que más han gastado</h4>
-                <div style="overflow-x: auto;">
-                    <table style="width: 100%; background: white;" id="tabla-ranking-operadores">
+                <h4 style="margin: 5px 0; color: #1e3c72;">🛣️ Suma por Trayectos (Ida y Vuelta por Día y Operador)</h4>
+                <div style="overflow-x: auto; max-height: 150px;">
+                    <table style="width: 100%; background: white;" id="tabla-trayectos">
                         <thead>
                             <tr>
-                                <th>#</th>
+                                <th>Fecha</th>
                                 <th>Operador</th>
+                                <th>Destino</th>
                                 <th>Casetas</th>
-                                <th>Gasto Total ($)</th>
+                                <th>Total Trayecto ($)</th>
                             </tr>
                         </thead>
                         <tbody></tbody>
                     </table>
                 </div>
 
-                <div id="detalle-casetas-viaje" style="margin-top: 10px; font-size: 11px;"></div>
+                <hr style="border: 0; border-top: 1px solid #ccc; margin: 10px 0;">
+                <h4 style="margin: 5px 0; color: #1e3c72;">🏆 Ranking de Operadores que más gastan</h4>
+                <div style="overflow-x: auto;">
+                    <table style="width: 100%; background: white;" id="tabla-ranking-operadores">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Operador</th>
+                                <th>Trayectos</th>
+                                <th>Gasto Total ($)</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
             </div>
         </div>
 
@@ -458,7 +472,7 @@
             reader.readAsArrayBuffer(file);
         }
 
-        // ESTIMADOR Y RANKING DE GASTO POR OPERADOR
+        // ESTIMADOR Y SUMA POR TRAYECTO (IDA Y VUELTA)
         function estimarRutaIave() {
             const destinoInput = normalizarTexto(document.getElementById('est_iave_destino').value);
             const opInput = normalizarTexto(document.getElementById('est_iave_op').value);
@@ -485,28 +499,48 @@
             }
 
             let sT = cC.reduce((a, c) => a + (parseFloat(c.monto) || 0), 0);
-            let ultimoRegistro = cC[cC.length - 1];
-
-            document.getElementById('res_est_iave_destino').innerText = (document.getElementById('est_iave_destino').value || 'Todas las Casetas').toUpperCase();
-            document.getElementById('res_est_iave_ultimo_precio').innerText = `$${parseFloat(ultimoRegistro.monto).toFixed(2)} MXN`;
+            document.getElementById('res_est_iave_destino').innerText = (document.getElementById('est_iave_destino').value || 'Todas las Rutas').toUpperCase();
             document.getElementById('res_est_iave_monto').innerText = `$${sT.toFixed(2)} MXN`;
 
-            // CALCULAR RANKING POR OPERADOR
+            // AGRUPAR POR TRAYECTO (Operador + Fecha del día + Destino)
+            let trayectosMap = {};
+            cC.forEach(c => {
+                let soloFecha = c.fecha ? c.fecha.split(' ')[0] : 'S/F';
+                let op = c.operador || 'Sin Nombre';
+                let dest = c.destino_iave || 'General';
+                let key = `${soloFecha}_${op}_${dest}`;
+
+                if (!trayectosMap[key]) {
+                    trayectosMap[key] = { fecha: soloFecha, operador: op, destino: dest, totalMonto: 0, countCasetas: 0 };
+                }
+                trayectosMap[key].totalMonto += parseFloat(c.monto) || 0;
+                trayectosMap[key].countCasetas += 1;
+            });
+
+            let listaTrayectos = Object.values(trayectosMap).sort((a, b) => b.fecha.localeCompare(a.fecha));
+            let tbTrayectos = document.querySelector('#tabla-trayectos tbody');
+            tbTrayectos.innerHTML = '';
+            listaTrayectos.forEach(t => {
+                tbTrayectos.innerHTML += `<tr>
+                    <td>${t.fecha}</td>
+                    <td><b>${t.operador}</b></td>
+                    <td>${t.destino}</td>
+                    <td>${t.countCasetas} casetas</td>
+                    <td>$${t.totalMonto.toFixed(2)} MXN</td>
+                </tr>`;
+            });
+
+            // RANKING DE OPERADORES
             let ranking = {};
             cC.forEach(c => {
                 let opNombre = c.operador || 'Sin Nombre';
-                if (!ranking[opNombre]) {
-                    ranking[opNombre] = { montoTotal: 0, numCasetas: 0 };
-                }
+                if (!ranking[opNombre]) ranking[opNombre] = { montoTotal: 0, numTrayectos: 0 };
                 ranking[opNombre].montoTotal += parseFloat(c.monto) || 0;
-                ranking[opNombre].numCasetas += 1;
             });
 
-            // Ordenar de mayor a menor gasto
             let listaRanking = Object.keys(ranking).map(op => ({
                 operador: op,
-                montoTotal: ranking[op].montoTotal,
-                numCasetas: ranking[op].numCasetas
+                montoTotal: ranking[op].montoTotal
             })).sort((a, b) => b.montoTotal - a.montoTotal);
 
             let tbRanking = document.querySelector('#tabla-ranking-operadores tbody');
@@ -516,19 +550,11 @@
                 tbRanking.innerHTML += `<tr ${estiloFila}>
                     <td>${index + 1}</td>
                     <td>${item.operador} ${index === 0 ? '⚠️ (Mayor Gasto)' : ''}</td>
-                    <td>${item.numCasetas}</td>
+                    <td>-</td>
                     <td>$${item.montoTotal.toFixed(2)} MXN</td>
                 </tr>`;
             });
 
-            // Desglose rápido de últimos registros
-            let htmlDetalle = '<br><b>Últimos cruces:</b><ul style="padding-left:15px; margin-top:5px; max-height:100px; overflow-y:auto;">';
-            cC.slice().reverse().slice(0, 10).forEach(c => {
-                htmlDetalle += `<li>${c.fecha} | <b>${c.operador}</b> - ${c.caseta || 'Caseta'}: $${parseFloat(c.monto).toFixed(2)} MXN</li>`;
-            });
-            htmlDetalle += '</ul>';
-            
-            document.getElementById('detalle-casetas-viaje').innerHTML = htmlDetalle;
             document.getElementById('resultado-estimador-iave').style.display = 'block';
         }
 
