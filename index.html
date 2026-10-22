@@ -135,12 +135,11 @@
             </form>
         </div>
 
-        <!-- COTIZADOR IAVE CORREGIDO -->
         <div class="card" style="background: #eaf2f8; border: 1px solid #aed6f1;">
-            <h2>🔮 Cotizador Casetas IAVE (Búsqueda Inteligente)</h2>
+            <h2>🔮 Cotizador Casetas IAVE (Flexible)</h2>
             <div class="grid">
                 <div><label>Operador (Opcional)</label><input type="text" id="est_iave_op" list="lista-operadores-iave" placeholder="Dejar vacío para todos"></div>
-                <div><label>Destino / Ruta / Caseta</label><input type="text" id="est_iave_destino" placeholder="Ej. Chapala, T Tepotzotlán..."></div>
+                <div><label>Destino / Ruta / Caseta</label><input type="text" id="est_iave_destino" placeholder="Ej. Chapala, Tepotzotlán..."></div>
                 <div><label>Mes (Opcional)</label><input type="month" id="est_iave_mes"></div>
             </div>
             <button type="button" style="background: #27ae60;" onclick="estimarRutaIave()">💰 Calcular Presupuesto de Casetas</button>
@@ -288,6 +287,16 @@
         let datosCierreIaveActual = null;
         let datosResumenFuelActual = null;
 
+        // FUNCIÓN CLAVE: LIMPIA ACENTOS, MAYÚSCULAS Y ESPACIOS PARA COMPARACIONES FLEXIBLES
+        function normalizarTexto(txt) {
+            if (!txt) return "";
+            return txt.toString()
+                      .normalize("NFD")
+                      .replace(/[\u0300-\u036f]/g, "") // Remueve acentos
+                      .toLowerCase()
+                      .trim();
+        }
+
         window.addEventListener('DOMContentLoaded', () => {
             const hoy = new Date().toISOString().split('T')[0];
             document.getElementById('f_fecha').value = hoy;
@@ -374,11 +383,11 @@
                     let importados = 0;
 
                     rows.forEach(r => {
-                        let tipoRaw = (r.Tipo || '').toString().toLowerCase().trim();
-                        let casetaRuta = (r.CasetaRuta || '').toString().toLowerCase();
+                        let tipoRaw = normalizarTexto(r.Tipo);
+                        let casetaRutaNorm = normalizarTexto(r.CasetaRuta);
                         
                         if (!tipoRaw) {
-                            if (casetaRuta.includes('abono') || casetaRuta.includes('recarga')) {
+                            if (casetaRutaNorm.includes('abono') || casetaRutaNorm.includes('recarga')) {
                                 tipoRaw = 'recarga_tag';
                             } else if (r.Km && parseFloat(r.Km) > 0) {
                                 tipoRaw = 'combustible';
@@ -388,7 +397,7 @@
                         }
 
                         let fecha = normalizarFecha(r.FechaHora);
-                        let op = r.Operador || 'Sin Nombre';
+                        let op = (r.Operador || 'Sin Nombre').toString().trim();
                         let montoLitros = parseFloat(r.MontoLitros) || 0;
 
                         if (tipoRaw === 'combustible') {
@@ -434,10 +443,10 @@
             reader.readAsArrayBuffer(file);
         }
 
-        // ESTIMADOR IAVE CORREGIDO (BUSCA EN DESTINO Y EN CASETA/RUTA)
+        // ESTIMADOR IAVE CON COINCIDENCIA FLEXIBLE
         function estimarRutaIave() {
-            const op = document.getElementById('est_iave_op').value.trim().toLowerCase();
-            const destinoInput = document.getElementById('est_iave_destino').value.trim().toLowerCase();
+            const opInput = normalizarTexto(document.getElementById('est_iave_op').value);
+            const destinoInput = normalizarTexto(document.getElementById('est_iave_destino').value);
             const mesSel = document.getElementById('est_iave_mes').value;
 
             if (!destinoInput) { alert('⚠️ Escribe el destino o ruta a cotizar.'); return; }
@@ -445,27 +454,26 @@
             let bd = JSON.parse(localStorage.getItem('bd_transporte') || '[]');
             let cC = bd.filter(i => {
                 if (i.tipo !== 'iave') return false;
-                let matchOp = !op || (i.operador && i.operador.toLowerCase().includes(op));
+                let matchOp = !opInput || normalizarTexto(i.operador).includes(opInput);
                 let matchMes = !mesSel || (i.fecha && i.fecha.startsWith(mesSel));
                 
-                // Búsqueda inteligente tanto en destino_iave como en caseta o detalles
-                let textDestino = (i.destino_iave || '').toLowerCase();
-                let textCaseta = (i.caseta || '').toLowerCase();
-                let textDetalles = (i.detalles || '').toLowerCase();
+                let textDestino = normalizarTexto(i.destino_iave);
+                let textCaseta = normalizarTexto(i.caseta);
+                let textDetalles = normalizarTexto(i.detalles);
                 let matchDestino = textDestino.includes(destinoInput) || textCaseta.includes(destinoInput) || textDetalles.includes(destinoInput);
 
                 return matchOp && matchMes && matchDestino;
             });
 
             if (cC.length === 0) {
-                alert('ℹ️ No se encontraron casetas para esa ruta o destino en el historial.');
+                alert('ℹ️ No se encontraron casetas coincidentes en el historial.');
                 document.getElementById('resultado-estimador-iave').style.display = 'none';
                 return;
             }
 
             let sT = cC.reduce((a, c) => a + (parseFloat(c.monto) || 0), 0);
 
-            document.getElementById('res_est_iave_destino').innerText = destinoInput.toUpperCase();
+            document.getElementById('res_est_iave_destino').innerText = document.getElementById('est_iave_destino').value.toUpperCase();
             document.getElementById('res_est_iave_coincidencias').innerText = cC.length;
             document.getElementById('res_est_iave_monto').innerText = `$${sT.toFixed(2)} MXN`;
             document.getElementById('resultado-estimador-iave').style.display = 'block';
@@ -489,37 +497,47 @@
 
         function autocompletarTagRecarga() {
             let ops = JSON.parse(localStorage.getItem('bd_operadores') || '[]');
-            let c = ops.find(o => o.nombre.toLowerCase() === document.getElementById('rec_operador').value.trim().toLowerCase());
+            let opInput = normalizarTexto(document.getElementById('rec_operador').value);
+            let c = ops.find(o => normalizarTexto(o.nombre) === opInput);
             if (c && c.tag) document.getElementById('rec_tag').value = c.tag;
         }
 
         function estimarRutaCombustible() {
-            const op = document.getElementById('est_fuel_op').value.trim().toLowerCase();
-            const origen = document.getElementById('est_fuel_origen').value.trim().toLowerCase();
-            const destino = document.getElementById('est_fuel_destino').value.trim().toLowerCase();
+            const opInput = normalizarTexto(document.getElementById('est_fuel_op').value);
+            const origenInput = normalizarTexto(document.getElementById('est_fuel_origen').value);
+            const destinoInput = normalizarTexto(document.getElementById('est_fuel_destino').value);
             const mesSel = document.getElementById('est_fuel_mes').value;
             const precioLitro = parseFloat(document.getElementById('est_fuel_precio').value) || 24.50;
+
             let bd = JSON.parse(localStorage.getItem('bd_transporte') || '[]');
-            let vC = bd.filter(i => i.tipo === 'combustible' && (!op || i.operador.toLowerCase().includes(op)) && (!mesSel || i.fecha.startsWith(mesSel)));
-            if (vC.length === 0) { alert('ℹ️ Sin registros.'); return; }
+            let vC = bd.filter(i => {
+                if (i.tipo !== 'combustible') return false;
+                let matchOp = !opInput || normalizarTexto(i.operador).includes(opInput);
+                let matchOrigen = !origenInput || normalizarTexto(i.origen).includes(origenInput) || normalizarTexto(i.detalles).includes(origenInput);
+                let matchDestino = !destinoInput || normalizarTexto(i.destino).includes(destinoInput) || normalizarTexto(i.detalles).includes(destinoInput);
+                let matchMes = !mesSel || (i.fecha && i.fecha.startsWith(mesSel));
+                return matchOp && matchOrigen && matchDestino && matchMes;
+            });
+
+            if (vC.length === 0) { alert('ℹ️ Sin registros coincidentes.'); return; }
             let sK = 0, sL = 0;
             vC.forEach(v => { sK += parseFloat(v.km) || 0; let s = (v.valor || '').split('L'); if(s.length>0) sL += parseFloat(s[0])||0; });
             let pL = (sL/vC.length).toFixed(1);
-            document.getElementById('res_est_fuel_ruta').innerText = `${origen.toUpperCase()} -> ${destino.toUpperCase()}`;
+            document.getElementById('res_est_fuel_ruta').innerText = `${document.getElementById('est_fuel_origen').value.toUpperCase()} -> ${document.getElementById('est_fuel_destino').value.toUpperCase()}`;
             document.getElementById('res_est_fuel_litros').innerText = `${pL} L`;
             document.getElementById('res_est_fuel_costo').innerText = `$${(pL * precioLitro).toFixed(2)} MXN`;
             document.getElementById('resultado-estimador-fuel').style.display = 'block';
         }
 
         function calcularCierreMensualCombustible() {
-            const opB = document.getElementById('cierre_fuel_operador').value.trim().toLowerCase();
+            const opB = normalizarTexto(document.getElementById('cierre_fuel_operador').value);
             const mS = document.getElementById('cierre_fuel_mes').value;
             let bd = JSON.parse(localStorage.getItem('bd_transporte') || '[]');
-            let rF = bd.filter(i => i.tipo === 'combustible' && i.operador.toLowerCase().includes(opB) && i.fecha.startsWith(mS));
+            let rF = bd.filter(i => i.tipo === 'combustible' && normalizarTexto(i.operador).includes(opB) && i.fecha.startsWith(mS));
             if (rF.length === 0) { alert('ℹ️ Sin registros.'); return; }
             let tK = 0, tL = 0;
             rF.forEach(r => { tK += parseFloat(r.km)||0; let s = (r.valor||'').split('L'); if(s.length>0) tL += parseFloat(s[0])||0; });
-            datosResumenFuelActual = { op: opB.toUpperCase(), totalKm: tK, totalLitros: tL, rendPromedio: tK>0&&tL>0?(tK/tL).toFixed(2):0, registros: rF, mes: mS };
+            datosResumenFuelActual = { op: document.getElementById('cierre_fuel_operador').value.toUpperCase(), totalKm: tK, totalLitros: tL, rendPromedio: tK>0&&tL>0?(tK/tL).toFixed(2):0, registros: rF, mes: mS };
             document.getElementById('res_fuel_km').innerText = `${tK.toFixed(1)}`;
             document.getElementById('res_fuel_litros').innerText = `${tL.toFixed(1)}`;
             document.getElementById('res_fuel_rend').innerText = `${datosResumenFuelActual.rendPromedio} Km/L`;
@@ -527,15 +545,15 @@
         }
 
         function calcularCierreCuentaIave() {
-            const opB = document.getElementById('cierre_operador').value.trim().toLowerCase();
+            const opB = normalizarTexto(document.getElementById('cierre_operador').value);
             const fI = document.getElementById('cierre_inicio').value, fF = document.getElementById('cierre_fin').value;
             let bd = JSON.parse(localStorage.getItem('bd_transporte') || '[]');
-            let cF = bd.filter(i => i.tipo === 'iave' && i.operador.toLowerCase().includes(opB) && (!fI || i.fecha >= fI) && (!fF || i.fecha <= fF));
-            let rF = bd.filter(i => i.tipo === 'recarga_tag' && i.operador.toLowerCase().includes(opB) && (!fI || i.fecha >= fI) && (!fF || i.fecha <= fF));
+            let cF = bd.filter(i => i.tipo === 'iave' && normalizarTexto(i.operador).includes(opB) && (!fI || i.fecha >= fI) && (!fF || i.fecha <= fF));
+            let rF = bd.filter(i => i.tipo === 'recarga_tag' && normalizarTexto(i.operador).includes(opB) && (!fI || i.fecha >= fI) && (!fF || i.fecha <= fF));
             let sGC = cF.reduce((a,c)=>a+(parseFloat(c.monto)||0),0);
             let sTR = rF.reduce((a,c)=>a+(parseFloat(c.monto)||0),0);
             let bN = sTR - sGC;
-            datosCierreIaveActual = { op: opB.toUpperCase(), sumaGastoCasetas: sGC, sumaTotalRecargas: sTR, balanceNeto: bN, casetas: cF, recargas: rF };
+            datosCierreIaveActual = { op: document.getElementById('cierre_operador').value.toUpperCase(), sumaGastoCasetas: sGC, sumaTotalRecargas: sTR, balanceNeto: bN, casetas: cF, recargas: rF };
             document.getElementById('res_recargas').innerText = `$${sTR.toFixed(2)}`;
             document.getElementById('res_monto').innerText = `$${sGC.toFixed(2)}`;
             let eB = document.getElementById('res_balance');
@@ -593,15 +611,16 @@
 
         function autocompletarTagOperador() {
             let ops = JSON.parse(localStorage.getItem('bd_operadores')||'[]');
-            let c = ops.find(o => o.nombre.toLowerCase() === document.getElementById('i_operador').value.trim().toLowerCase());
+            let opInput = normalizarTexto(document.getElementById('i_operador').value);
+            let c = ops.find(o => normalizarTexto(o.nombre) === opInput);
             if(c && c.tag) document.getElementById('i_tag').value = c.tag;
         }
 
         function calcularNumeroViajeAuto() {
-            let opI = document.getElementById('f_operador').value.trim().toLowerCase(), fI = document.getElementById('f_fecha').value;
+            let opI = normalizarTexto(document.getElementById('f_operador').value), fI = document.getElementById('f_fecha').value;
             if(!fI||!opI) return;
             let bd = JSON.parse(localStorage.getItem('bd_transporte')||'[]');
-            let vM = bd.filter(i => i.tipo==='combustible' && i.operador.toLowerCase()===opI && i.fecha.startsWith(fI.substring(0,7)));
+            let vM = bd.filter(i => i.tipo==='combustible' && normalizarTexto(i.operador)===opI && i.fecha.startsWith(fI.substring(0,7)));
             document.getElementById('f_viaje').value = vM.length === 0 ? 1 : Math.max(...vM.map(v => parseInt(v.num_viaje||0, 10))) + 1;
         }
 
@@ -725,10 +744,10 @@
         }
 
         function filtrarHistorial() {
-            let op = document.getElementById('filtro_operador').value.toLowerCase().trim();
+            let op = normalizarTexto(document.getElementById('filtro_operador').value);
             let i = document.getElementById('filtro_inicio').value, f = document.getElementById('filtro_fin').value;
             let bd = JSON.parse(localStorage.getItem('bd_transporte')||'[]');
-            let fD = bd.filter(x => (!op || x.operador.toLowerCase().includes(op)) && (!i || x.fecha >= i) && (!f || x.fecha <= f));
+            let fD = bd.filter(x => (!op || normalizarTexto(x.operador).includes(op)) && (!i || x.fecha >= i) && (!f || x.fecha <= f));
             renderTabla(fD);
         }
 
