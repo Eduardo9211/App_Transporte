@@ -31,13 +31,11 @@
         th, td { border: 1px solid #ddd; padding: 6px; text-align: left; }
         th { background: #1e3c72; color: white; }
         .btn-action { padding: 4px 8px; font-size: 11px; margin: 2px; width: auto; display: inline-block; }
-        .btn-edit { background: #f39c12; }
         .btn-delete { background: #e74c3c; }
 
         .chart-container { position: relative; height: 250px; width: 100%; margin-top: 15px; }
         .resumen-iave { background: #eef2f7; border-left: 5px solid #27ae60; padding: 12px; border-radius: 4px; margin-top: 15px; }
         .resumen-fuel { background: #fef9e7; border-left: 5px solid #f39c12; padding: 12px; border-radius: 4px; margin-top: 15px; }
-
         #reporte-pdf-area { background: white; padding: 20px; display: none; }
     </style>
 </head>
@@ -45,7 +43,6 @@
 
     <div id="status-bar" class="status online">🟢 Modo Offline Activo (Compatible PC y Celular)</div>
 
-    <!-- LISTAS AUTOCOMPLETADAS -->
     <datalist id="lista-operadores-combustible"></datalist>
     <datalist id="lista-operadores-iave"></datalist>
     <datalist id="lista-operadores-todos"></datalist>
@@ -59,7 +56,7 @@
         <button class="tab-btn" onclick="cambiarPestaña(event, 'tab-historial')">📊 Historial y PDF</button>
     </div>
 
-    <!-- PESTAÑA 1: COMBUSTIBLE DIARIO -->
+    <!-- PESTAÑA 1: COMBUSTIBLE -->
     <div id="tab-combustible" class="tab-content active">
         <div class="card" style="background: #fef9e7; border: 1px solid #f9e79f;">
             <h2>🔮 Estimador Pré-Ruta: Combustible</h2>
@@ -138,17 +135,19 @@
             </form>
         </div>
 
+        <!-- COTIZADOR IAVE CORREGIDO -->
         <div class="card" style="background: #eaf2f8; border: 1px solid #aed6f1;">
-            <h2>🔮 Cotizador Casetas IAVE</h2>
+            <h2>🔮 Cotizador Casetas IAVE (Búsqueda Inteligente)</h2>
             <div class="grid">
-                <div><label>Operador</label><input type="text" id="est_iave_op" list="lista-operadores-iave"></div>
-                <div><label>Destino</label><input type="text" id="est_iave_destino" placeholder="Chapala"></div>
-                <div><label>Mes</label><input type="month" id="est_iave_mes"></div>
+                <div><label>Operador (Opcional)</label><input type="text" id="est_iave_op" list="lista-operadores-iave" placeholder="Dejar vacío para todos"></div>
+                <div><label>Destino / Ruta / Caseta</label><input type="text" id="est_iave_destino" placeholder="Ej. Chapala, T Tepotzotlán..."></div>
+                <div><label>Mes (Opcional)</label><input type="month" id="est_iave_mes"></div>
             </div>
-            <button type="button" style="background: #27ae60;" onclick="estimarRutaIave()">💰 Calcular Casetas</button>
+            <button type="button" style="background: #27ae60;" onclick="estimarRutaIave()">💰 Calcular Presupuesto de Casetas</button>
             <div id="resultado-estimador-iave" class="resumen-iave" style="display: none;">
                 <h4>Presupuesto Casetas: <span id="res_est_iave_destino">-</span></h4>
-                <p style="margin: 3px 0;"><strong>Gasto Promedio:</strong> <span id="res_est_iave_monto" style="color: #27ae60; font-weight: bold;">$0.00 MXN</span></p>
+                <p style="margin: 3px 0;"><strong>Viajes/Registros Encontrados:</strong> <span id="res_est_iave_coincidencias">0</span></p>
+                <p style="margin: 3px 0;"><strong>Gasto Promedio Total:</strong> <span id="res_est_iave_monto" style="color: #27ae60; font-weight: bold; font-size: 16px;">$0.00 MXN</span></p>
             </div>
         </div>
 
@@ -378,7 +377,6 @@
                         let tipoRaw = (r.Tipo || '').toString().toLowerCase().trim();
                         let casetaRuta = (r.CasetaRuta || '').toString().toLowerCase();
                         
-                        // Detección automática si Tipo viene vacío en Excel
                         if (!tipoRaw) {
                             if (casetaRuta.includes('abono') || casetaRuta.includes('recarga')) {
                                 tipoRaw = 'recarga_tag';
@@ -406,10 +404,10 @@
                         } else if (tipoRaw === 'iave' || tipoRaw === 'caseta') {
                             bd.push({
                                 tipo: 'iave', fecha: fecha, operador: op, num_viaje: '-',
-                                detalles: `[${r.Destino || 'Ruta'}] Caseta: ${r.CasetaRuta || 'Caseta'} (${r.TipoViaje || 'IDA'})`,
+                                detalles: `[${r.Destino || r.CasetaRuta || 'Ruta'}] Caseta: ${r.CasetaRuta || 'Caseta'} (${r.TipoViaje || 'IDA'})`,
                                 valor: `$${montoLitros} MXN`, monto: montoLitros, rend: 0,
-                                tag: r.Tag || '', destino_iave: r.Destino || '', tipo_iave: r.TipoViaje || 'IDA',
-                                caseta: r.CasetaRuta || '', importe: montoLitros, timestamp: new Date().toISOString()
+                                tag: r.Tag || '', destino_iave: (r.Destino || r.CasetaRuta || '').toString().toUpperCase(), 
+                                tipo_iave: r.TipoViaje || 'IDA', caseta: r.CasetaRuta || '', importe: montoLitros, timestamp: new Date().toISOString()
                             });
                             importados++;
                         } else if (tipoRaw === 'recarga_tag' || tipoRaw === 'recarga') {
@@ -425,8 +423,8 @@
 
                     localStorage.setItem('bd_transporte', JSON.stringify(bd));
                     statusDiv.style.color = '#27ae60';
-                    statusDiv.innerText = `✅ ¡Éxito! Se importaron ${importados} registros (Gallo, Rubén, Álvaro).`;
-                    alert(`✅ ¡Carga Masiva Exitosa! Se agregaron los ${importados} registros de todos los operadores.`);
+                    statusDiv.innerText = `✅ ¡Éxito! Se importaron ${importados} registros.`;
+                    alert(`✅ ¡Carga Masiva Exitosa! Se agregaron ${importados} registros.`);
                     fileInput.value = '';
                 } catch (err) {
                     console.error(err);
@@ -434,6 +432,43 @@
                 }
             };
             reader.readAsArrayBuffer(file);
+        }
+
+        // ESTIMADOR IAVE CORREGIDO (BUSCA EN DESTINO Y EN CASETA/RUTA)
+        function estimarRutaIave() {
+            const op = document.getElementById('est_iave_op').value.trim().toLowerCase();
+            const destinoInput = document.getElementById('est_iave_destino').value.trim().toLowerCase();
+            const mesSel = document.getElementById('est_iave_mes').value;
+
+            if (!destinoInput) { alert('⚠️ Escribe el destino o ruta a cotizar.'); return; }
+
+            let bd = JSON.parse(localStorage.getItem('bd_transporte') || '[]');
+            let cC = bd.filter(i => {
+                if (i.tipo !== 'iave') return false;
+                let matchOp = !op || (i.operador && i.operador.toLowerCase().includes(op));
+                let matchMes = !mesSel || (i.fecha && i.fecha.startsWith(mesSel));
+                
+                // Búsqueda inteligente tanto en destino_iave como en caseta o detalles
+                let textDestino = (i.destino_iave || '').toLowerCase();
+                let textCaseta = (i.caseta || '').toLowerCase();
+                let textDetalles = (i.detalles || '').toLowerCase();
+                let matchDestino = textDestino.includes(destinoInput) || textCaseta.includes(destinoInput) || textDetalles.includes(destinoInput);
+
+                return matchOp && matchMes && matchDestino;
+            });
+
+            if (cC.length === 0) {
+                alert('ℹ️ No se encontraron casetas para esa ruta o destino en el historial.');
+                document.getElementById('resultado-estimador-iave').style.display = 'none';
+                return;
+            }
+
+            let sT = cC.reduce((a, c) => a + (parseFloat(c.monto) || 0), 0);
+
+            document.getElementById('res_est_iave_destino').innerText = destinoInput.toUpperCase();
+            document.getElementById('res_est_iave_coincidencias').innerText = cC.length;
+            document.getElementById('res_est_iave_monto').innerText = `$${sT.toFixed(2)} MXN`;
+            document.getElementById('resultado-estimador-iave').style.display = 'block';
         }
 
         function guardarRecargaTAG() {
@@ -474,19 +509,6 @@
             document.getElementById('res_est_fuel_litros').innerText = `${pL} L`;
             document.getElementById('res_est_fuel_costo').innerText = `$${(pL * precioLitro).toFixed(2)} MXN`;
             document.getElementById('resultado-estimador-fuel').style.display = 'block';
-        }
-
-        function estimarRutaIave() {
-            const op = document.getElementById('est_iave_op').value.trim().toLowerCase();
-            const destino = document.getElementById('est_iave_destino').value.trim().toLowerCase();
-            const mesSel = document.getElementById('est_iave_mes').value;
-            let bd = JSON.parse(localStorage.getItem('bd_transporte') || '[]');
-            let cC = bd.filter(i => i.tipo === 'iave' && (!op || i.operador.toLowerCase().includes(op)) && i.destino_iave.toLowerCase().includes(destino) && (!mesSel || i.fecha.startsWith(mesSel)));
-            if (cC.length === 0) { alert('ℹ️ Sin casetas.'); return; }
-            let sT = cC.reduce((a,c) => a + (parseFloat(c.monto)||0), 0);
-            document.getElementById('res_est_iave_destino').innerText = destino.toUpperCase();
-            document.getElementById('res_est_iave_monto').innerText = `$${sT.toFixed(2)} MXN`;
-            document.getElementById('resultado-estimador-iave').style.display = 'block';
         }
 
         function calcularCierreMensualCombustible() {
