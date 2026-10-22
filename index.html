@@ -135,18 +135,38 @@
             </form>
         </div>
 
+        <!-- COTIZADOR Y RANKING DE OPERADORES QUE MÁS GASTAN -->
         <div class="card" style="background: #eaf2f8; border: 1px solid #aed6f1;">
-            <h2>🔮 Cotizador Casetas IAVE (Flexible)</h2>
+            <h2>🔮 Cotizador y Comparativa de Gastos por Operador</h2>
             <div class="grid">
-                <div><label>Operador (Opcional)</label><input type="text" id="est_iave_op" list="lista-operadores-iave" placeholder="Dejar vacío para todos"></div>
-                <div><label>Destino / Ruta / Caseta</label><input type="text" id="est_iave_destino" placeholder="Ej. Chapala, Tepotzotlán..."></div>
+                <div><label>Buscar Caseta o Ruta</label><input type="text" id="est_iave_destino" placeholder="Ej. Jorobas, Tepotzotlán, Palmillas..."></div>
+                <div><label>Filtrar por Operador</label><input type="text" id="est_iave_op" list="lista-operadores-iave" placeholder="Dejar vacío para comparar TODOS"></div>
                 <div><label>Mes (Opcional)</label><input type="month" id="est_iave_mes"></div>
             </div>
-            <button type="button" style="background: #27ae60;" onclick="estimarRutaIave()">💰 Calcular Presupuesto de Casetas</button>
+            <button type="button" style="background: #27ae60;" onclick="estimarRutaIave()">💰 Consultar / Rankear Operadores</button>
+            
             <div id="resultado-estimador-iave" class="resumen-iave" style="display: none;">
-                <h4>Presupuesto Casetas: <span id="res_est_iave_destino">-</span></h4>
-                <p style="margin: 3px 0;"><strong>Viajes/Registros Encontrados:</strong> <span id="res_est_iave_coincidencias">0</span></p>
-                <p style="margin: 3px 0;"><strong>Gasto Promedio Total:</strong> <span id="res_est_iave_monto" style="color: #27ae60; font-weight: bold; font-size: 16px;">$0.00 MXN</span></p>
+                <h4>Búsqueda: <span id="res_est_iave_destino">-</span></h4>
+                <p style="margin: 3px 0;"><strong>Último Precio Registrado:</strong> <span id="res_est_iave_ultimo_precio" style="color: #27ae60; font-weight: bold; font-size: 16px;">$0.00 MXN</span></p>
+                <p style="margin: 3px 0;"><strong>Gasto Acumulado Total:</strong> <span id="res_est_iave_monto" style="font-weight: bold;">$0.00 MXN</span></p>
+                
+                <hr style="border: 0; border-top: 1px solid #ccc; margin: 10px 0;">
+                <h4 style="margin: 5px 0; color: #1e3c72;">🏆 Ranking: Operadores que más han gastado</h4>
+                <div style="overflow-x: auto;">
+                    <table style="width: 100%; background: white;" id="tabla-ranking-operadores">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Operador</th>
+                                <th>Casetas</th>
+                                <th>Gasto Total ($)</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+
+                <div id="detalle-casetas-viaje" style="margin-top: 10px; font-size: 11px;"></div>
             </div>
         </div>
 
@@ -287,14 +307,9 @@
         let datosCierreIaveActual = null;
         let datosResumenFuelActual = null;
 
-        // FUNCIÓN CLAVE: LIMPIA ACENTOS, MAYÚSCULAS Y ESPACIOS PARA COMPARACIONES FLEXIBLES
         function normalizarTexto(txt) {
             if (!txt) return "";
-            return txt.toString()
-                      .normalize("NFD")
-                      .replace(/[\u0300-\u036f]/g, "") // Remueve acentos
-                      .toLowerCase()
-                      .trim();
+            return txt.toString().normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
         }
 
         window.addEventListener('DOMContentLoaded', () => {
@@ -443,13 +458,11 @@
             reader.readAsArrayBuffer(file);
         }
 
-        // ESTIMADOR IAVE CON COINCIDENCIA FLEXIBLE
+        // ESTIMADOR Y RANKING DE GASTO POR OPERADOR
         function estimarRutaIave() {
-            const opInput = normalizarTexto(document.getElementById('est_iave_op').value);
             const destinoInput = normalizarTexto(document.getElementById('est_iave_destino').value);
+            const opInput = normalizarTexto(document.getElementById('est_iave_op').value);
             const mesSel = document.getElementById('est_iave_mes').value;
-
-            if (!destinoInput) { alert('⚠️ Escribe el destino o ruta a cotizar.'); return; }
 
             let bd = JSON.parse(localStorage.getItem('bd_transporte') || '[]');
             let cC = bd.filter(i => {
@@ -460,22 +473,62 @@
                 let textDestino = normalizarTexto(i.destino_iave);
                 let textCaseta = normalizarTexto(i.caseta);
                 let textDetalles = normalizarTexto(i.detalles);
-                let matchDestino = textDestino.includes(destinoInput) || textCaseta.includes(destinoInput) || textDetalles.includes(destinoInput);
+                let matchDestino = !destinoInput || textDestino.includes(destinoInput) || textCaseta.includes(destinoInput) || textDetalles.includes(destinoInput);
 
                 return matchOp && matchMes && matchDestino;
             });
 
             if (cC.length === 0) {
-                alert('ℹ️ No se encontraron casetas coincidentes en el historial.');
+                alert('ℹ️ No se encontraron registros de casetas para esos criterios.');
                 document.getElementById('resultado-estimador-iave').style.display = 'none';
                 return;
             }
 
             let sT = cC.reduce((a, c) => a + (parseFloat(c.monto) || 0), 0);
+            let ultimoRegistro = cC[cC.length - 1];
 
-            document.getElementById('res_est_iave_destino').innerText = document.getElementById('est_iave_destino').value.toUpperCase();
-            document.getElementById('res_est_iave_coincidencias').innerText = cC.length;
+            document.getElementById('res_est_iave_destino').innerText = (document.getElementById('est_iave_destino').value || 'Todas las Casetas').toUpperCase();
+            document.getElementById('res_est_iave_ultimo_precio').innerText = `$${parseFloat(ultimoRegistro.monto).toFixed(2)} MXN`;
             document.getElementById('res_est_iave_monto').innerText = `$${sT.toFixed(2)} MXN`;
+
+            // CALCULAR RANKING POR OPERADOR
+            let ranking = {};
+            cC.forEach(c => {
+                let opNombre = c.operador || 'Sin Nombre';
+                if (!ranking[opNombre]) {
+                    ranking[opNombre] = { montoTotal: 0, numCasetas: 0 };
+                }
+                ranking[opNombre].montoTotal += parseFloat(c.monto) || 0;
+                ranking[opNombre].numCasetas += 1;
+            });
+
+            // Ordenar de mayor a menor gasto
+            let listaRanking = Object.keys(ranking).map(op => ({
+                operador: op,
+                montoTotal: ranking[op].montoTotal,
+                numCasetas: ranking[op].numCasetas
+            })).sort((a, b) => b.montoTotal - a.montoTotal);
+
+            let tbRanking = document.querySelector('#tabla-ranking-operadores tbody');
+            tbRanking.innerHTML = '';
+            listaRanking.forEach((item, index) => {
+                let estiloFila = index === 0 ? 'style="background-color: #fadbd8; font-weight: bold;"' : '';
+                tbRanking.innerHTML += `<tr ${estiloFila}>
+                    <td>${index + 1}</td>
+                    <td>${item.operador} ${index === 0 ? '⚠️ (Mayor Gasto)' : ''}</td>
+                    <td>${item.numCasetas}</td>
+                    <td>$${item.montoTotal.toFixed(2)} MXN</td>
+                </tr>`;
+            });
+
+            // Desglose rápido de últimos registros
+            let htmlDetalle = '<br><b>Últimos cruces:</b><ul style="padding-left:15px; margin-top:5px; max-height:100px; overflow-y:auto;">';
+            cC.slice().reverse().slice(0, 10).forEach(c => {
+                htmlDetalle += `<li>${c.fecha} | <b>${c.operador}</b> - ${c.caseta || 'Caseta'}: $${parseFloat(c.monto).toFixed(2)} MXN</li>`;
+            });
+            htmlDetalle += '</ul>';
+            
+            document.getElementById('detalle-casetas-viaje').innerHTML = htmlDetalle;
             document.getElementById('resultado-estimador-iave').style.display = 'block';
         }
 
