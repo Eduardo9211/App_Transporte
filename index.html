@@ -29,14 +29,19 @@
         
         table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 11px; }
         th, td { border: 1px solid #ddd; padding: 6px; text-align: left; }
-        th { background: #1e3c72; color: white; }
+        th { background: #1e3c72; color: white; cursor: pointer; user-select: none; }
+        th:hover { background: #162a50; }
         .btn-action { padding: 4px 8px; font-size: 11px; margin: 2px; width: auto; display: inline-block; }
         .btn-delete { background: #e74c3c; }
 
-        .chart-container { position: relative; height: 250px; width: 100%; margin-top: 15px; }
+        .chart-container { position: relative; height: 230px; width: 100%; margin-top: 15px; }
         .resumen-iave { background: #eef2f7; border-left: 5px solid #27ae60; padding: 12px; border-radius: 4px; margin-top: 15px; }
         .resumen-fuel { background: #fef9e7; border-left: 5px solid #f39c12; padding: 12px; border-radius: 4px; margin-top: 15px; }
         #reporte-pdf-area { background: white; padding: 20px; display: none; }
+
+        .kpi-box { background: #ffffff; border: 1px solid #dcdfe6; padding: 10px; border-radius: 6px; text-align: center; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+        .kpi-title { font-size: 10px; color: #7f8c8d; font-weight: bold; text-transform: uppercase; }
+        .kpi-value { font-size: 15px; color: #1e3c72; font-weight: bold; margin-top: 4px; }
     </style>
 </head>
 <body>
@@ -45,14 +50,14 @@
 
     <datalist id="lista-operadores-combustible"></datalist>
     <datalist id="lista-operadores-iave"></datalist>
-    <datalist id="lista-operadores-todos"></datalist
+    <datalist id="lista-operadores-todos"></datalist>
 
     <div class="tabs">
         <button class="tab-btn active" onclick="cambiarPestaña(event, 'tab-combustible')">⛽ Combustible</button>
         <button class="tab-btn" onclick="cambiarPestaña(event, 'tab-iave')">💳 Casetas e IAVE</button>
         <button class="tab-btn" onclick="cambiarPestaña(event, 'tab-excel')">📁 Carga Masiva</button>
         <button class="tab-btn" onclick="cambiarPestaña(event, 'tab-operadores')">👥 Operadores</button>
-        <button class="tab-btn" onclick="cambiarPestaña(event, 'tab-comparativa')">📈 Gráficas</button>
+        <button class="tab-btn" onclick="cambiarPestaña(event, 'tab-comparativa')">📈 Gráficas y KPIs</button>
         <button class="tab-btn" onclick="cambiarPestaña(event, 'tab-historial')">📊 Historial y PDF</button>
     </div>
 
@@ -250,28 +255,55 @@
         </div>
     </div>
 
-    <!-- PESTAÑA 4: GRÁFICAS -->
+    <!-- PESTAÑA 4: GRÁFICAS Y KPIS -->
     <div id="tab-comparativa" class="tab-content">
         <div class="card">
-            <h2>📈 Gráficas</h2>
+            <h2>📈 Métricas, Tiempo de Viaje y Gráficas</h2>
             <div class="grid">
                 <div><label>Inicio</label><input type="date" id="graf_inicio"></div>
                 <div><label>Fin</label><input type="date" id="graf_fin"></div>
             </div>
             <div class="grid">
-                <button type="button" style="background: #27ae60;" onclick="actualizarGraficas()">🔄 Actualizar</button>
-                <button type="button" style="background: #8e44ad;" onclick="descargarPDFGraficas()">📄 PDF Gráficas</button>
+                <button type="button" style="background: #27ae60;" onclick="actualizarGraficas()">🔄 Actualizar Métricas</button>
+                <button type="button" style="background: #8e44ad;" onclick="descargarPDFGraficas()">📄 Exportar PDF Ejecutivo</button>
             </div>
-            <div id="area-graficas-pdf">
-                <h3 style="margin-top: 15px;">💳 Casetas</h3>
+
+            <div id="area-graficas-pdf" style="padding: 10px; background: white;">
+                <div style="text-align: center; border-bottom: 2px solid #1e3c72; padding-bottom: 8px; margin-bottom: 12px;">
+                    <h3 style="margin: 0; color: #1e3c72; font-size: 16px;">INFORME EJECUTIVO DE OPERACIÓN DE FLOTA</h3>
+                    <span style="font-size: 11px; color: #666;">Resumen de Tiempos, Diésel y Peajes</span>
+                </div>
+
+                <!-- KPIS PRINCIPALES -->
+                <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 8px; margin-bottom: 15px;">
+                    <div class="kpi-box">
+                        <div class="kpi-title">⏱️ Horas Totales Viaje</div>
+                        <div class="kpi-value" id="kpi_horas_viaje" style="color: #2980b9;">0 hrs</div>
+                    </div>
+                    <div class="kpi-box">
+                        <div class="kpi-title">💵 Casetas IAVE Total</div>
+                        <div class="kpi-value" id="kpi_monto_casetas" style="color: #27ae60;">$0 MXN</div>
+                    </div>
+                    <div class="kpi-box">
+                        <div class="kpi-title">⛽ Diésel Cargado</div>
+                        <div class="kpi-value" id="kpi_litros_diesel" style="color: #d35400;">0 L</div>
+                    </div>
+                    <div class="kpi-box">
+                        <div class="kpi-title">🛣️ Costo Prom. Caseta</div>
+                        <div class="kpi-value" id="kpi_costo_prom_caseta" style="color: #8e44ad;">$0 MXN</div>
+                    </div>
+                </div>
+
+                <h3 style="margin-top: 15px; font-size: 13px;">💳 Gasto de Casetas por Operador</h3>
                 <div class="chart-container"><canvas id="chartPeajes"></canvas></div>
-                <h3 style="margin-top: 25px;">⛽ Combustible</h3>
+
+                <h3 style="margin-top: 20px; font-size: 13px;">⛽ Eficiencia de Rendimiento de Combustible (Km/L)</h3>
                 <div class="chart-container"><canvas id="chartRendimiento"></canvas></div>
             </div>
         </div>
     </div>
 
-    <!-- PESTAÑA 5: HISTORIAL Y PDF -->
+    <!-- PESTAÑA 5: HISTORIAL Y PDF CON ORDENAMIENTO DE COLUMNAS -->
     <div id="tab-historial" class="tab-content">
         <div class="card">
             <h2>📊 Historial y Borrado Masivo</h2>
@@ -291,11 +323,11 @@
                     <thead>
                         <tr>
                             <th style="width: 30px; text-align: center;"><input type="checkbox" id="sel-todos" onclick="seleccionarTodos(this)"></th>
-                            <th>Fecha</th>
-                            <th>Área</th>
-                            <th>Operador</th>
+                            <th onclick="ordenarHistorial('fecha')">Fecha <span id="sort_fecha">⇅</span></th>
+                            <th onclick="ordenarHistorial('tipo')">Área <span id="sort_tipo">⇅</span></th>
+                            <th onclick="ordenarHistorial('operador')">Operador <span id="sort_operador">⇅</span></th>
                             <th>Detalle</th>
-                            <th>Monto</th>
+                            <th onclick="ordenarHistorial('monto')">Monto <span id="sort_monto">⇅</span></th>
                             <th>Acción</th>
                         </tr>
                     </thead>
@@ -316,6 +348,7 @@
         let myChartRend = null;
         let datosCierreIaveActual = null;
         let datosResumenFuelActual = null;
+        let historialOrdenActual = { columna: 'fecha', ascendente: false };
 
         function normalizarTexto(txt) {
             if (!txt) return "";
@@ -468,7 +501,7 @@
             reader.readAsArrayBuffer(file);
         }
 
-        // COTIZADOR DIRECTO POR ORIGEN Y DESTINO (COINCIDENCIA PARCIAL)
+        // COTIZADOR DIRECTO POR ORIGEN Y DESTINO
         function cotizarPorOrigenDestino() {
             const origenBusq = normalizarTexto(document.getElementById('est_iave_origen').value);
             const destinoBusq = normalizarTexto(document.getElementById('est_iave_destino').value);
@@ -481,7 +514,6 @@
 
             let bd = JSON.parse(localStorage.getItem('bd_transporte') || '[]');
             
-            // Filtrar casetas que coincidan parcialmente con Origen o Destino
             let casetasCoincidentes = bd.filter(i => {
                 if (i.tipo !== 'iave') return false;
                 
@@ -518,14 +550,12 @@
                 }
             });
 
-            // Si no hay registros de vuelta grabados, se estima la vuelta igual a la ida
             if (sumaVuelta === 0) {
                 sumaVuelta = sumaIda;
             }
 
             let totalRedondo = sumaIda + sumaVuelta;
 
-            // Mostrar resultados
             let nombreOrigen = (document.getElementById('est_iave_origen').value || 'Origen General').toUpperCase();
             let nombreDestino = (document.getElementById('est_iave_destino').value || 'Destino General').toUpperCase();
             
@@ -534,7 +564,6 @@
             document.getElementById('res_costo_vuelta').innerText = `$${sumaVuelta.toFixed(2)} MXN`;
             document.getElementById('res_costo_total').innerText = `$${totalRedondo.toFixed(2)} MXN`;
 
-            // Llenar tabla de casetas encontradas
             let tb = document.querySelector('#tabla-casetas-ruta tbody');
             tb.innerHTML = '';
             casetasCoincidentes.forEach(c => {
@@ -547,6 +576,140 @@
             });
 
             document.getElementById('resultado-estimador-iave').style.display = 'block';
+        }
+
+        // ACTUALIZAR GRÁFICAS Y KPIS DE TIEMPO / DÍESEL / CASETAS
+        function actualizarGraficas() {
+            let bd = JSON.parse(localStorage.getItem('bd_transporte') || '[]');
+            let gI = document.getElementById('graf_inicio').value;
+            let gF = document.getElementById('graf_fin').value;
+
+            let oP = {}, oR = {};
+            let totalMontoCasetas = 0;
+            let countCasetas = 0;
+            let totalLitrosDiesel = 0;
+            let fechasValidViajes = [];
+
+            bd.forEach(i => {
+                if ((!gI || i.fecha >= gI) && (!gF || i.fecha <= gF)) {
+                    if (i.tipo === 'iave') {
+                        let monto = parseFloat(i.monto) || 0;
+                        oP[i.operador] = (oP[i.operador] || 0) + monto;
+                        totalMontoCasetas += monto;
+                        countCasetas += 1;
+                        if (i.fecha) fechasValidViajes.push(new Date(i.fecha));
+                    } else if (i.tipo === 'combustible') {
+                        if (i.rend > 0) oR[i.operador] = i.rend;
+                        let s = (i.valor || '').split('L');
+                        if (s.length > 0) totalLitrosDiesel += parseFloat(s[0]) || 0;
+                    }
+                }
+            });
+
+            // CÁLCULO DE HORAS TOTALES DE TRANSITO
+            let horasTotales = 0;
+            if (fechasValidViajes.length > 1) {
+                fechasValidViajes.sort((a, b) => a - b);
+                let minFecha = fechasValidViajes[0];
+                let maxFecha = fechasValidViajes[fechasValidViajes.length - 1];
+                horasTotales = Math.round((maxFecha - minFecha) / (1000 * 60 * 60));
+            }
+
+            // ACTUALIZAR TARJETAS KPIS
+            document.getElementById('kpi_horas_viaje').innerText = `${horasTotales} hrs`;
+            document.getElementById('kpi_monto_casetas').innerText = `$${totalMontoCasetas.toFixed(2)} MXN`;
+            document.getElementById('kpi_litros_diesel').innerText = `${totalLitrosDiesel.toFixed(1)} L`;
+            document.getElementById('kpi_costo_prom_caseta').innerText = `$${countCasetas > 0 ? (totalMontoCasetas / countCasetas).toFixed(2) : 0} MXN`;
+
+            // DIBUJAR GRÁFICOS
+            if (myChartPeajes) myChartPeajes.destroy();
+            myChartPeajes = new Chart(document.getElementById('chartPeajes').getContext('2d'), {
+                type: 'bar',
+                data: { labels: Object.keys(oP), datasets: [{ label: 'Casetas ($)', data: Object.values(oP), backgroundColor: '#1e3c72' }] },
+                options: { responsive: true, maintainAspectRatio: false }
+            });
+
+            if (myChartRend) myChartRend.destroy();
+            myChartRend = new Chart(document.getElementById('chartRendimiento').getContext('2d'), {
+                type: 'bar',
+                data: { labels: Object.keys(oR), datasets: [{ label: 'Rendimiento (Km/L)', data: Object.values(oR), backgroundColor: '#2ecc71' }] },
+                options: { responsive: true, maintainAspectRatio: false }
+            });
+        }
+
+        function descargarPDFGraficas() { 
+            html2pdf().set({ margin: 8, filename: 'Reporte_Ejecutivo_Flotas.pdf' }).from(document.getElementById('area-graficas-pdf')).save(); 
+        }
+
+        // ORDENAMIENTO DE TABLA DE HISTORIAL AL DAR CLIC EN EL ENCABEZADO
+        function ordenarHistorial(columna) {
+            if (historialOrdenActual.columna === columna) {
+                historialOrdenActual.ascendente = !historialOrdenActual.ascendente;
+            } else {
+                historialOrdenActual.columna = columna;
+                historialOrdenActual.ascendente = true;
+            }
+
+            // Actualizar flechas en la UI
+            document.getElementById('sort_fecha').innerText = '⇅';
+            document.getElementById('sort_tipo').innerText = '⇅';
+            document.getElementById('sort_operador').innerText = '⇅';
+            document.getElementById('sort_monto').innerText = '⇅';
+
+            let elem = document.getElementById(`sort_${columna}`);
+            if (elem) elem.innerText = historialOrdenActual.ascendente ? '⬆️' : '⬇️';
+
+            cargarHistorial();
+        }
+
+        function cargarHistorial() { 
+            let bd = JSON.parse(localStorage.getItem('bd_transporte') || '[]');
+            
+            // Aplicar ordenamiento
+            bd.sort((a, b) => {
+                let valA = a[historialOrdenActual.columna] || '';
+                let valB = b[historialOrdenActual.columna] || '';
+
+                if (historialOrdenActual.columna === 'monto') {
+                    valA = parseFloat(a.monto) || 0;
+                    valB = parseFloat(b.monto) || 0;
+                }
+
+                if (valA < valB) return historialOrdenActual.ascendente ? -1 : 1;
+                if (valA > valB) return historialOrdenActual.ascendente ? 1 : -1;
+                return 0;
+            });
+
+            renderTabla(bd); 
+        }
+
+        function renderTabla(datos) {
+            let bdOriginal = JSON.parse(localStorage.getItem('bd_transporte') || '[]');
+            let tb = document.querySelector('#tabla-historial tbody'); 
+            tb.innerHTML = '';
+            document.getElementById('sel-todos').checked = false;
+            
+            datos.forEach((d) => {
+                let realIdx = bdOriginal.indexOf(d);
+                tb.innerHTML += `<tr>
+                    <td style="text-align: center;"><input type="checkbox" class="chk-item" data-index="${realIdx}"></td>
+                    <td>${d.fecha}</td>
+                    <td><b>${d.tipo.toUpperCase()}</b></td>
+                    <td>${d.operador}</td>
+                    <td>${d.detalles}</td>
+                    <td>${d.valor}</td>
+                    <td><button class="btn-action btn-delete" onclick="eliminarRegistro(${realIdx})">🗑️</button></td>
+                </tr>`;
+            });
+        }
+
+        function filtrarHistorial() {
+            let op = normalizarTexto(document.getElementById('filtro_operador').value);
+            let i = document.getElementById('filtro_inicio').value;
+            let f = document.getElementById('filtro_fin').value;
+            let bd = JSON.parse(localStorage.getItem('bd_transporte') || '[]');
+            let fD = bd.filter(x => (!op || normalizarTexto(x.operador).includes(op)) && (!i || x.fecha >= i) && (!f || x.fecha <= f));
+            renderTabla(fD);
         }
 
         function guardarRecargaTAG() {
@@ -761,28 +924,6 @@
             }
         }
 
-        function actualizarGraficas() {
-            let bd = JSON.parse(localStorage.getItem('bd_transporte')||'[]');
-            let gI = document.getElementById('graf_inicio').value, gF = document.getElementById('graf_fin').value;
-            let oP = {}, oR = {};
-            bd.forEach(i => {
-                if((!gI || i.fecha >= gI) && (!gF || i.fecha <= gF)) {
-                    if(i.tipo === 'iave') oP[i.operador] = (oP[i.operador]||0) + i.monto;
-                    else if(i.tipo === 'combustible' && i.rend > 0) oR[i.operador] = i.rend;
-                }
-            });
-            if(myChartPeajes) myChartPeajes.destroy();
-            myChartPeajes = new Chart(document.getElementById('chartPeajes').getContext('2d'), {
-                type: 'bar', data: { labels: Object.keys(oP), datasets: [{ label: 'Casetas ($)', data: Object.values(oP), backgroundColor: '#1e3c72' }] }
-            });
-            if(myChartRend) myChartRend.destroy();
-            myChartRend = new Chart(document.getElementById('chartRendimiento').getContext('2d'), {
-                type: 'bar', data: { labels: Object.keys(oR), datasets: [{ label: 'Rendimiento (Km/L)', data: Object.values(oR), backgroundColor: '#2ecc71' }] }
-            });
-        }
-
-        function descargarPDFGraficas() { html2pdf().set({ margin: 10 }).from(document.getElementById('area-graficas-pdf')).save(); }
-
         function descargarPDFDirecto() {
             let bd = JSON.parse(localStorage.getItem('bd_transporte')||'[]');
             if(bd.length===0){alert('⚠️ Vacío.');return;}
@@ -791,35 +932,6 @@
             bd.forEach(d => { h += `<tr><td>${d.fecha}</td><td>${d.tipo.toUpperCase()}</td><td>${d.operador}</td><td>${d.detalles}</td><td>${d.valor}</td></tr>`; });
             h += `</tbody></table>`; c.innerHTML = h; ar.style.display='block';
             html2pdf().set({ margin: 10 }).from(ar).save().then(() => ar.style.display='none');
-        }
-
-        function cargarHistorial() { renderTabla(JSON.parse(localStorage.getItem('bd_transporte')||'[]')); }
-
-        function renderTabla(datos) {
-            let bd = JSON.parse(localStorage.getItem('bd_transporte')||'[]');
-            let tb = document.querySelector('#tabla-historial tbody'); tb.innerHTML='';
-            document.getElementById('sel-todos').checked = false;
-            
-            datos.forEach((d) => {
-                let realIdx = bd.indexOf(d);
-                tb.innerHTML += `<tr>
-                    <td style="text-align: center;"><input type="checkbox" class="chk-item" data-index="${realIdx}"></td>
-                    <td>${d.fecha}</td>
-                    <td><b>${d.tipo.toUpperCase()}</b></td>
-                    <td>${d.operador}</td>
-                    <td>${d.detalles}</td>
-                    <td>${d.valor}</td>
-                    <td><button class="btn-action btn-delete" onclick="eliminarRegistro(${realIdx})">🗑️</button></td>
-                </tr>`;
-            });
-        }
-
-        function filtrarHistorial() {
-            let op = normalizarTexto(document.getElementById('filtro_operador').value);
-            let i = document.getElementById('filtro_inicio').value, f = document.getElementById('filtro_fin').value;
-            let bd = JSON.parse(localStorage.getItem('bd_transporte')||'[]');
-            let fD = bd.filter(x => (!op || normalizarTexto(x.operador).includes(op)) && (!i || x.fecha >= i) && (!f || x.fecha <= f));
-            renderTabla(fD);
         }
 
         if ('serviceWorker' in navigator) { window.addEventListener('load', () => navigator.serviceWorker.register('/sw.js')); }
