@@ -135,31 +135,32 @@
             </form>
         </div>
 
-        <!-- COTIZADOR Y SUMA POR TRAYECTO (IDA Y VUELTA) + RANKING -->
+        <!-- COTIZADOR CON DESGLOSE DE IDA Y VUELTA -->
         <div class="card" style="background: #eaf2f8; border: 1px solid #aed6f1;">
-            <h2>🔮 Cotizador y Suma por Trayecto (Ida y Vuelta)</h2>
+            <h2>🔮 Cotizador y Desglose de Viajes (Ida / Vuelta)</h2>
             <div class="grid">
-                <div><label>Buscar Destino / Ruta (Ej. Chapala, León)</label><input type="text" id="est_iave_destino" placeholder="Chapala, León..."></div>
+                <div><label>Buscar Destino / Ruta</label><input type="text" id="est_iave_destino" placeholder="Chapala, León..."></div>
                 <div><label>Filtrar Operador (Opcional)</label><input type="text" id="est_iave_op" list="lista-operadores-iave" placeholder="Dejar vacío para TODOS"></div>
                 <div><label>Mes (Opcional)</label><input type="month" id="est_iave_mes"></div>
             </div>
-            <button type="button" style="background: #27ae60;" onclick="estimarRutaIave()">💰 Calcular Trayectos y Ranking</button>
+            <button type="button" style="background: #27ae60;" onclick="estimarRutaIave()">💰 Calcular Viajes y Desglose</button>
             
             <div id="resultado-estimador-iave" class="resumen-iave" style="display: none;">
                 <h4>Ruta / Destino: <span id="res_est_iave_destino">-</span></h4>
-                <p style="margin: 3px 0;"><strong>Gasto Acumulado en Trayectos:</strong> <span id="res_est_iave_monto" style="font-weight: bold; color: #27ae60; font-size: 16px;">$0.00 MXN</span></p>
+                <p style="margin: 3px 0;"><strong>Gasto Acumulado Total:</strong> <span id="res_est_iave_monto" style="font-weight: bold; color: #27ae60; font-size: 16px;">$0.00 MXN</span></p>
                 
                 <hr style="border: 0; border-top: 1px solid #ccc; margin: 10px 0;">
-                <h4 style="margin: 5px 0; color: #1e3c72;">🛣️ Suma por Trayectos (Ida y Vuelta por Día y Operador)</h4>
-                <div style="overflow-x: auto; max-height: 150px;">
+                <h4 style="margin: 5px 0; color: #1e3c72;">🛣️ Desglose de Viajes (Ida y Vuelta)</h4>
+                <div style="overflow-x: auto; max-height: 220px;">
                     <table style="width: 100%; background: white;" id="tabla-trayectos">
                         <thead>
                             <tr>
-                                <th>Fecha</th>
+                                <th>Fecha Viaje</th>
                                 <th>Operador</th>
                                 <th>Destino</th>
-                                <th>Casetas</th>
-                                <th>Total Trayecto ($)</th>
+                                <th>Casetas Ida ($)</th>
+                                <th>Casetas Vuelta ($)</th>
+                                <th>Total Viaje ($)</th>
                             </tr>
                         </thead>
                         <tbody></tbody>
@@ -174,7 +175,7 @@
                             <tr>
                                 <th>#</th>
                                 <th>Operador</th>
-                                <th>Trayectos</th>
+                                <th>Viajes</th>
                                 <th>Gasto Total ($)</th>
                             </tr>
                         </thead>
@@ -428,6 +429,7 @@
                         let fecha = normalizarFecha(r.FechaHora);
                         let op = (r.Operador || 'Sin Nombre').toString().trim();
                         let montoLitros = parseFloat(r.MontoLitros) || 0;
+                        let tipoViajeExcel = (r.TipoViaje || 'IDA').toString().toUpperCase().trim();
 
                         if (tipoRaw === 'combustible') {
                             let km = parseFloat(r.Km) || 0;
@@ -442,10 +444,10 @@
                         } else if (tipoRaw === 'iave' || tipoRaw === 'caseta') {
                             bd.push({
                                 tipo: 'iave', fecha: fecha, operador: op, num_viaje: '-',
-                                detalles: `[${r.Destino || r.CasetaRuta || 'Ruta'}] Caseta: ${r.CasetaRuta || 'Caseta'} (${r.TipoViaje || 'IDA'})`,
+                                detalles: `[${r.Destino || r.CasetaRuta || 'Ruta'}] Caseta: ${r.CasetaRuta || 'Caseta'} (${tipoViajeExcel})`,
                                 valor: `$${montoLitros} MXN`, monto: montoLitros, rend: 0,
                                 tag: r.Tag || '', destino_iave: (r.Destino || r.CasetaRuta || '').toString().toUpperCase(), 
-                                tipo_iave: r.TipoViaje || 'IDA', caseta: r.CasetaRuta || '', importe: montoLitros, timestamp: new Date().toISOString()
+                                tipo_iave: tipoViajeExcel, caseta: r.CasetaRuta || '', importe: montoLitros, timestamp: new Date().toISOString()
                             });
                             importados++;
                         } else if (tipoRaw === 'recarga_tag' || tipoRaw === 'recarga') {
@@ -472,7 +474,7 @@
             reader.readAsArrayBuffer(file);
         }
 
-        // ESTIMADOR Y SUMA POR TRAYECTO (IDA Y VUELTA)
+        // ESTIMADOR Y AGRUPACIÓN POR CICLO DE VIAJE (UTILIZANDO IDA Y VUELTA)
         function estimarRutaIave() {
             const destinoInput = normalizarTexto(document.getElementById('est_iave_destino').value);
             const opInput = normalizarTexto(document.getElementById('est_iave_op').value);
@@ -502,45 +504,93 @@
             document.getElementById('res_est_iave_destino').innerText = (document.getElementById('est_iave_destino').value || 'Todas las Rutas').toUpperCase();
             document.getElementById('res_est_iave_monto').innerText = `$${sT.toFixed(2)} MXN`;
 
-            // AGRUPAR POR TRAYECTO (Operador + Fecha del día + Destino)
-            let trayectosMap = {};
+            // AGRUPACIÓN POR CICLO DE VIAJE (SOPORTA MULTIDÍA Y SEPARA IDA DE VUELTA)
+            cC.sort((a, b) => new Date(a.fecha) - new Date(b.fecha));
+
+            let viajesConsolidados = [];
+            let viajeActual = null;
+
             cC.forEach(c => {
-                let soloFecha = c.fecha ? c.fecha.split(' ')[0] : 'S/F';
+                let fechaObj = new Date(c.fecha);
+                let fechaTexto = c.fecha ? c.fecha.split(' ')[0] : 'S/F';
                 let op = c.operador || 'Sin Nombre';
                 let dest = c.destino_iave || 'General';
-                let key = `${soloFecha}_${op}_${dest}`;
+                let tipoV = (c.tipo_iave || 'IDA').toUpperCase();
+                let monto = parseFloat(c.monto) || 0;
 
-                if (!trayectosMap[key]) {
-                    trayectosMap[key] = { fecha: soloFecha, operador: op, destino: dest, totalMonto: 0, countCasetas: 0 };
+                if (!viajeActual) {
+                    viajeActual = {
+                        fechaInicio: fechaTexto,
+                        fechaFin: fechaTexto,
+                        operador: op,
+                        destino: dest,
+                        montoIda: tipoV.includes('IDA') ? monto : 0,
+                        montoVuelta: tipoV.includes('VUELTA') ? monto : 0,
+                        totalMonto: monto,
+                        ultimaFechaObj: fechaObj
+                    };
+                } else {
+                    let difHoras = (fechaObj - viajeActual.ultimaFechaObj) / (1000 * 60 * 60);
+                    let mismoOp = normalizarTexto(viajeActual.operador) === normalizarTexto(op);
+
+                    // Si es el mismo operador y pasaron menos de 48 horas, se considera parte del mismo VIAJE (Ida y Vuelta)
+                    if (mismoOp && difHoras <= 48) {
+                        if (tipoV.includes('VUELTA')) {
+                            viajeActual.montoVuelta += monto;
+                        } else {
+                            viajeActual.montoIda += monto;
+                        }
+                        viajeActual.totalMonto += monto;
+                        viajeActual.fechaFin = fechaTexto;
+                        viajeActual.ultimaFechaObj = fechaObj;
+                        if (dest && dest !== 'GENERAL') viajeActual.destino = dest;
+                    } else {
+                        viajesConsolidados.push(viajeActual);
+                        viajeActual = {
+                            fechaInicio: fechaTexto,
+                            fechaFin: fechaTexto,
+                            operador: op,
+                            destino: dest,
+                            montoIda: tipoV.includes('IDA') ? monto : 0,
+                            montoVuelta: tipoV.includes('VUELTA') ? monto : 0,
+                            totalMonto: monto,
+                            ultimaFechaObj: fechaObj
+                        };
+                    }
                 }
-                trayectosMap[key].totalMonto += parseFloat(c.monto) || 0;
-                trayectosMap[key].countCasetas += 1;
             });
 
-            let listaTrayectos = Object.values(trayectosMap).sort((a, b) => b.fecha.localeCompare(a.fecha));
+            if (viajeActual) viajesConsolidados.push(viajeActual);
+
+            viajesConsolidados.sort((a, b) => b.fechaInicio.localeCompare(a.fechaInicio));
+
             let tbTrayectos = document.querySelector('#tabla-trayectos tbody');
             tbTrayectos.innerHTML = '';
-            listaTrayectos.forEach(t => {
+            viajesConsolidados.forEach(v => {
+                let rangoFecha = v.fechaInicio === v.fechaFin ? v.fechaInicio : `${v.fechaInicio} al ${v.fechaFin}`;
                 tbTrayectos.innerHTML += `<tr>
-                    <td>${t.fecha}</td>
-                    <td><b>${t.operador}</b></td>
-                    <td>${t.destino}</td>
-                    <td>${t.countCasetas} casetas</td>
-                    <td>$${t.totalMonto.toFixed(2)} MXN</td>
+                    <td>${rangoFecha}</td>
+                    <td><b>${v.operador}</b></td>
+                    <td>${v.destino}</td>
+                    <td>$${v.montoIda.toFixed(2)}</td>
+                    <td>$${v.montoVuelta.toFixed(2)}</td>
+                    <td><b>$${v.totalMonto.toFixed(2)} MXN</b></td>
                 </tr>`;
             });
 
             // RANKING DE OPERADORES
             let ranking = {};
-            cC.forEach(c => {
-                let opNombre = c.operador || 'Sin Nombre';
-                if (!ranking[opNombre]) ranking[opNombre] = { montoTotal: 0, numTrayectos: 0 };
-                ranking[opNombre].montoTotal += parseFloat(c.monto) || 0;
+            viajesConsolidados.forEach(v => {
+                let opNombre = v.operador;
+                if (!ranking[opNombre]) ranking[opNombre] = { montoTotal: 0, numViajes: 0 };
+                ranking[opNombre].montoTotal += v.totalMonto;
+                ranking[opNombre].numViajes += 1;
             });
 
             let listaRanking = Object.keys(ranking).map(op => ({
                 operador: op,
-                montoTotal: ranking[op].montoTotal
+                montoTotal: ranking[op].montoTotal,
+                numViajes: ranking[op].numViajes
             })).sort((a, b) => b.montoTotal - a.montoTotal);
 
             let tbRanking = document.querySelector('#tabla-ranking-operadores tbody');
@@ -550,7 +600,7 @@
                 tbRanking.innerHTML += `<tr ${estiloFila}>
                     <td>${index + 1}</td>
                     <td>${item.operador} ${index === 0 ? '⚠️ (Mayor Gasto)' : ''}</td>
-                    <td>-</td>
+                    <td>${item.numViajes} viaje(s)</td>
                     <td>$${item.montoTotal.toFixed(2)} MXN</td>
                 </tr>`;
             });
@@ -733,6 +783,7 @@
                 d.detalles = `[${document.getElementById('i_destino').value||'Ruta'}] Caseta: ${document.getElementById('i_caseta').value} (${document.getElementById('i_tipo').value})`;
                 d.valor = `$${document.getElementById('i_importe').value} MXN`;
                 d.monto = parseFloat(document.getElementById('i_importe').value)||0; d.rend = 0;
+                d.tipo_iave = document.getElementById('i_tipo').value.toUpperCase();
                 bd.push(d); alert('✅ Caseta guardada.');
             }
             localStorage.setItem('bd_transporte', JSON.stringify(bd));
